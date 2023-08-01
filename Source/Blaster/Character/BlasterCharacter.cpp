@@ -5,6 +5,9 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/WidgetComponent.h"
+#include "../HUD/OverheadWidget.h"
+#include "GameFramework/PlayerState.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -21,12 +24,18 @@ ABlasterCharacter::ABlasterCharacter()
 
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
+
+	OverheadWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("OverheadWidget"));
+	OverheadWidget->SetupAttachment(RootComponent);
+
+	LocalPlayerName = FString(TEXT("Player"));
 }
 
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
+	//ServerSetPlayerName(LocalPlayerName);
 }
 
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -76,5 +85,27 @@ void ABlasterCharacter::LookUp(float Value)
 void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+}
+void ABlasterCharacter::ClientSetName_Implementation(const FString& Name)
+{
+	// 플레이어 이름 설정
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (PlayerController != nullptr)
+	{
+		PlayerController->PlayerState->SetPlayerName(Name);
+	}
+}
+
+void ABlasterCharacter::ServerSetPlayerName_Implementation(const FString& PlayerName)
+{
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (PlayerController)
+	{
+		// 서버에 플레이어 이름 설정
+		PlayerController->PlayerState->SetPlayerName(PlayerName);
+		// ClientSetName함수를 호출해 클라이언트에서 플레이어 이름을 설정
+		ClientSetName(PlayerName);
+	}
 
 }

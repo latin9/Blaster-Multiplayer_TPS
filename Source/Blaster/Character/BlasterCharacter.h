@@ -31,6 +31,17 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class UCameraComponent* FollowCamera;
 
-public:	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
+	class UWidgetComponent* OverheadWidget;
+
+	UPROPERTY(EditAnywhere, Category = "Player Name")
+	FString LocalPlayerName = TEXT("Unknown Player");
+
+public:
+	UFUNCTION(Client, Reliable)
+	void ClientSetName(const FString& Name);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetPlayerName(const FString& PlayerName);
 
 };
