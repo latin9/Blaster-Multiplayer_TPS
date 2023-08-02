@@ -33,4 +33,6 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	bIsInAir = BlasterCharacter->GetCharacterMovement()->IsFalling();
 	// 삼항 연산자와 현재의 속도를 판단해 가속중인지 판단
 	bIsAccelerating = BlasterCharacter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0.0 ? true : false;
+
+	bWeaponEquipped = BlasterCharacter->IsWeaponEquipped();
 }
