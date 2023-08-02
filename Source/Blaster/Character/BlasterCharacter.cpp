@@ -34,6 +34,9 @@ ABlasterCharacter::ABlasterCharacter()
 	Combat = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 	Combat->SetIsReplicated(true);
 
+	// 이걸 설정해줘야 웅크리기가 가능해진다.
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+
 	LocalPlayerName = FString(TEXT("Player"));
 }
 
@@ -66,6 +69,9 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 
 	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction(TEXT("Equip"), IE_Pressed, this, &ABlasterCharacter::EquipButtonPressed);
+	PlayerInputComponent->BindAction(TEXT("Crouch"), IE_Pressed, this, &ABlasterCharacter::CrouchButtonPressed);
+	PlayerInputComponent->BindAction(TEXT("Aim"), IE_Pressed, this, &ABlasterCharacter::AimButtonPressed);
+	PlayerInputComponent->BindAction(TEXT("Aim"), IE_Released, this, &ABlasterCharacter::AimButtonReleased);
 
 	PlayerInputComponent->BindAxis(TEXT("MoveForward"), this, &ABlasterCharacter::MoveForward);
 	PlayerInputComponent->BindAxis(TEXT("MoveRight"), this, &ABlasterCharacter::MoveRight);
@@ -136,6 +142,34 @@ void ABlasterCharacter::EquipButtonPressed()
 	}
 }
 
+void ABlasterCharacter::CrouchButtonPressed()
+{
+	if (bIsCrouched)
+	{
+		UnCrouch();
+	}
+	else
+	{
+		Crouch();
+	}
+}
+
+void ABlasterCharacter::AimButtonPressed()
+{
+	if (Combat)
+	{
+		Combat->SetAiming(true);
+	}
+}
+
+void ABlasterCharacter::AimButtonReleased()
+{
+	if (Combat)
+	{
+		Combat->SetAiming(false);
+	}
+}
+
 void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 {
 	// 플레이어가 Weapon에 Overlap해서 충돌되면 OverlappingWeapon이 nullptr이 아니게 되고
@@ -194,6 +228,11 @@ bool ABlasterCharacter::IsWeaponEquipped()
 {
 	// Combat이 유효하고 유효하다면 EquipWeapon이 유효한지
 	return (Combat && Combat->EquippedWeapon);
+}
+
+bool ABlasterCharacter::IsAiming()
+{
+	return (Combat && Combat->bAiming);
 }
 
 void ABlasterCharacter::ClientSetName_Implementation(const FString& Name)

@@ -31,6 +31,12 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bWeaponEquipped;
+
+	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	bool bIsCrouched;
+
+	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	bool bAiming;
 	
 public:
 	// 맨 게임 처음이나 언리얼 엔진을 로드하고 컴파일할때 실행
