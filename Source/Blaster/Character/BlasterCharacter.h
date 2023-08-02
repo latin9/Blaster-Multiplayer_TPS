@@ -15,6 +15,7 @@ public:
 	ABlasterCharacter();
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 protected:
 	virtual void BeginPlay() override;
@@ -36,6 +37,17 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Player Name")
 	FString LocalPlayerName = TEXT("Unknown Player");
+
+	// 서버에서 변경될때 모든 클라이언트에서 변경되고 무기에 대한 포인터를 복제할 수 있다.
+	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
+	class AWeapon* OverlappingWeapon;
+
+	// LastWeapon에는 복제되기전의 OverlappingWeapon이 들어간다
+	UFUNCTION()
+	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
+
+public:
+	void SetOverlappingWeapon(AWeapon* Weapon);
 
 public:
 	UFUNCTION(Client, Reliable)

@@ -8,6 +8,8 @@
 #include "Components/WidgetComponent.h"
 #include "../HUD/OverheadWidget.h"
 #include "GameFramework/PlayerState.h"
+#include "Net/UnrealNetwork.h"
+#include "../Weapon/Weapon.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -31,11 +33,27 @@ ABlasterCharacter::ABlasterCharacter()
 	LocalPlayerName = FString(TEXT("Player"));
 }
 
+void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// 어떤 클라이언트가 이 변수를 복제할지 제어할 수 있다.
+	// 속성이 오직 소유자에게만 복제되어야 함을 의미
+	// .즉, OverlappingWeapon 속성은 ABlasterCharacter를 소유한 클라이언트에게만 복제될 것입니다.
+	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
+}
+
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
 	//ServerSetPlayerName(LocalPlayerName);
+}
+
+void ABlasterCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
 }
 
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -49,6 +67,7 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAxis(TEXT("Turn"), this, &ABlasterCharacter::Turn);
 	PlayerInputComponent->BindAxis(TEXT("LookUp"), this, &ABlasterCharacter::LookUp);
 }
+
 
 void ABlasterCharacter::MoveForward(float Value)
 {
@@ -82,11 +101,52 @@ void ABlasterCharacter::LookUp(float Value)
 	AddControllerPitchInput(Value);
 }
 
-void ABlasterCharacter::Tick(float DeltaTime)
+void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 {
-	Super::Tick(DeltaTime);
+	// 플레이어가 Weapon에 Overlap해서 충돌되면 OverlappingWeapon이 nullptr이 아니게 되고
+	// 값이 바뀌게 되면서 복제가 되고 복제될때 해당 함수에 들어와서 PickupWidget을 보여주게 만듬
+	if (OverlappingWeapon)
+	{
+		OverlappingWeapon->ShowPickupWidget(true);
+	}
 
+	// 플레이어가 Weapon이랑 EndOverlap 되면 SetOverlappingWeapon(nullptr);이 호출되어
+	// OverlappingWeapon은 nullptr이 되어 값이 바뀌면서 해당 함수로 들어오게되지만
+	// LastWeapon에는 복제가 발생하기 전의 OverlappingWeapon이 담겨있기 때문에(nullptr 바뀌기 전의 값)
+	// PickWidget을 안 보이게 할 수 있는것이다.
+	if (LastWeapon)
+	{
+		LastWeapon->ShowPickupWidget(false);
+	}
 }
+
+void ABlasterCharacter::SetOverlappingWeapon(AWeapon* Weapon)
+{
+	// 호스트 클라이언트일 경우
+	if (IsLocallyControlled())
+	{
+		// 만약 이미 OverlappingWeapon이 있다면, 그 무기의 PickupWidget를 숨김
+		if (OverlappingWeapon)
+		{
+			OverlappingWeapon->ShowPickupWidget(false);
+		}
+
+		// OverlappingWeapon을 새로운 무기로 설정
+		OverlappingWeapon = Weapon;
+
+		// 만약 새로 설정된 OverlappingWeapon이 있다면, 그 무기의 PickupWidget를 보여줌
+		if (OverlappingWeapon)
+		{
+			OverlappingWeapon->ShowPickupWidget(true);
+		}
+	}
+	// 호스트 클라이언트가 아닌 경우, OverlappingWeapon만 설정
+	else
+	{
+		OverlappingWeapon = Weapon;
+	}
+}
+
 void ABlasterCharacter::ClientSetName_Implementation(const FString& Name)
 {
 	// 플레이어 이름 설정
