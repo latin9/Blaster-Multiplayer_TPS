@@ -11,6 +11,7 @@
 #include "Net/UnrealNetwork.h"
 #include "../Weapon/Weapon.h"
 #include "../Component/CombatComponent.h"
+#include "Components/CapsuleComponent.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -36,6 +37,9 @@ ABlasterCharacter::ABlasterCharacter()
 
 	// 이걸 설정해줘야 웅크리기가 가능해진다.
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+	// 캡슐충돌체와 스켈레탈 메쉬가 카메라와 충돌하지 않는다.
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 
 	LocalPlayerName = FString(TEXT("Player"));
 }

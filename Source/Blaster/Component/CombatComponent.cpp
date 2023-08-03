@@ -7,17 +7,25 @@
 #include "Engine/SkeletalMeshSocket.h"
 #include "Components/SphereComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 UCombatComponent::UCombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 
+	BaseWalkSpeed = 600.f;
+	AimWalkSpeed = 450.f;
 }
 
 
 void UCombatComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (Character)
+	{
+		Character->GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+	}
 
 }
 
@@ -26,14 +34,31 @@ void UCombatComponent::SetAiming(bool bIsAiming)
 	bAiming = bIsAiming;
 
 	ServerSetAiming(bIsAiming);
-
+	if (Character)
+	{
+		Character->GetCharacterMovement()->MaxWalkSpeed = bIsAiming ? AimWalkSpeed : BaseWalkSpeed;
+	}
 }
 
 void UCombatComponent::ServerSetAiming_Implementation(bool bIsAiming)
 {
 	bAiming = bIsAiming;
+	// 서버에도 플레이어 이동속도 정보를 넘겨줘야한다.
+	// 그래야 서버에서 모든 클라이언트에 정보를 제공해줌
+	if (Character)
+	{
+		Character->GetCharacterMovement()->MaxWalkSpeed = bIsAiming ? AimWalkSpeed : BaseWalkSpeed;
+	}
 }
 
+void UCombatComponent::OnRep_EquippedWeapon()
+{
+	if (EquippedWeapon && Character)
+	{
+		Character->GetCharacterMovement()->bOrientRotationToMovement = false;
+		Character->bUseControllerRotationYaw = true;
+	}
+}
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
@@ -64,5 +89,7 @@ void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 	}
 	// 무기의 소유자를 지정해줘야함
 	EquippedWeapon->SetOwner(Character);
+	Character->GetCharacterMovement()->bOrientRotationToMovement = false;
+	Character->bUseControllerRotationYaw = true;
 }
 

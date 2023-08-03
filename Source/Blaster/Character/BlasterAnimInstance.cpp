@@ -4,6 +4,7 @@
 #include "BlasterAnimInstance.h"
 #include "BlasterCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 
 void UBlasterAnimInstance::NativeInitializeAnimation()
 {
@@ -37,4 +38,21 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	bWeaponEquipped = BlasterCharacter->IsWeaponEquipped();
 	bIsCrouched = BlasterCharacter->bIsCrouched;
 	bAiming = BlasterCharacter->IsAiming();
+
+	// 글로벌 Rotation이다. 캐릭터 축 기준이 아님 범위 : -180 ~ 180
+	// Offset Yaw For Strafing
+	FRotator AimRotation = BlasterCharacter->GetBaseAimRotation();
+	FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(BlasterCharacter->GetVelocity());
+
+	// 좌 우 움직일때 애니메이션 부드럽게 보간되도록 보간된 Yaw값 추출
+	FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(MovementRotation, AimRotation);
+	DeltaRotation = FMath::RInterpTo(DeltaRotation, DeltaRot, DeltaTime, 6.f);
+	YawOffset = DeltaRotation.Yaw;
+
+	CharacterRotationLastFrame = CharacterRotation;
+	CharacterRotation = BlasterCharacter->GetActorRotation();
+	const FRotator Delta = UKismetMathLibrary::NormalizedDeltaRotator(CharacterRotation, CharacterRotationLastFrame);
+	const float Target = Delta.Yaw / DeltaTime;
+	const float Interp = FMath::FInterpTo(Lean, Target, DeltaTime, 6.f);
+	Lean = FMath::Clamp(Interp, -90.f, 90.f);
 }

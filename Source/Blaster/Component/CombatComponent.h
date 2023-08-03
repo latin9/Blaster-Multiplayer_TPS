@@ -30,16 +30,26 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void ServerSetAiming(bool bIsAiming);
 
+	UFUNCTION()
+	void OnRep_EquippedWeapon();
+
 
 private:
 	class ABlasterCharacter* Character;
 	// 장착된 무기를 저정하기 위함
 
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon)
 	class AWeapon* EquippedWeapon;
 
 	UPROPERTY(Replicated)
 	bool bAiming;
+
+	UPROPERTY(EditAnywhere)
+	float BaseWalkSpeed;
+
+
+	UPROPERTY(EditAnywhere)
+	float AimWalkSpeed;
 
 public:	
 

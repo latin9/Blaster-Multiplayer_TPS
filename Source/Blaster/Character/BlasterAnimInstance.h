@@ -37,6 +37,16 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
+
+	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	float YawOffset;
+
+	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	float Lean;
+
+	FRotator CharacterRotationLastFrame;
+	FRotator CharacterRotation;
+	FRotator DeltaRotation;
 	
 public:
 	// 맨 게임 처음이나 언리얼 엔진을 로드하고 컴파일할때 실행
