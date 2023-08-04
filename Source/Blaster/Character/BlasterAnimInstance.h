@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
+#include "../BlasterType/TurningInPlace.h"
 #include "BlasterAnimInstance.generated.h"
 
-/**
- * 
- */
+
+
 UCLASS()
 class BLASTER_API UBlasterAnimInstance : public UAnimInstance
 {
@@ -32,6 +32,8 @@ private:
 	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bWeaponEquipped;
 
+	class AWeapon* EquippedWeapon;
+
 	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bIsCrouched;
 
@@ -46,7 +48,22 @@ private:
 
 	FRotator CharacterRotationLastFrame;
 	FRotator CharacterRotation;
-	FRotator DeltaRotation;
+	FRotator DeltaRotation;	
+
+	// AimOffset Yaw
+	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	float AO_Yaw;
+	
+	// AimOffset Pitch
+	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	float AO_Pitch;
+
+	// FABRIK IK
+	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	FTransform LeftHandTransform;
+
+	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	ETurningInPlace TurningInPlace;
 	
 public:
 	// 맨 게임 처음이나 언리얼 엔진을 로드하고 컴파일할때 실행
