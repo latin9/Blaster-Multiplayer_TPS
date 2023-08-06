@@ -61,6 +61,7 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	AO_Yaw = BlasterCharacter->GetAO_Yaw();
 	AO_Pitch = BlasterCharacter->GetAO_Pitch();
 
+	// FABRIK IK
 	// 무기를 장착했고 장착한 무기가 있고 장착한 무기의 스켈레탈메쉬가 있고 플레이어의 스켈레탈 메쉬도 있을경우에만 허용
 	if (bWeaponEquipped && EquippedWeapon && EquippedWeapon->GetWeaponMesh() && BlasterCharacter->GetMesh())
 	{
@@ -69,8 +70,11 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 		// 값을 추출해 저장하기 위한 변수
 		FVector OutPosition;
 		FRotator OutRotation;
+		//TransformToBoneSpace 함수를 사용하여 왼손의 위치와 회전을 무기의 소켓 위치로 변환
+		// 해당 함수는 지정한 본 ("hand_r")의 공간에 대한 상대적인 변환을 계산합니다.
 		BlasterCharacter->GetMesh()->TransformToBoneSpace(FName("hand_r"), LeftHandTransform.GetLocation(),
 			FRotator::ZeroRotator, OutPosition, OutRotation);
+		// 계산된 위치 OutPosition와 회전 OutRotation으로 LeftHandTransform의 위치와 회전을 업데이트
 		LeftHandTransform.SetLocation(OutPosition);
 		LeftHandTransform.SetRotation(FQuat(OutRotation));
 	}

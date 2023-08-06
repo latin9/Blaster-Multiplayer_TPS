@@ -41,8 +41,12 @@ ABlasterCharacter::ABlasterCharacter()
 	// 캡슐충돌체와 스켈레탈 메쉬가 카메라와 충돌하지 않는다.
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+	GetCharacterMovement()->RotationRate = FRotator(0.0, 0.0, 850.0);
 
 	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+	// 네트워크 업데이트 빈도 기본 ~ 최소
+	NetUpdateFrequency = 66.f;
+	MinNetUpdateFrequency = 33.f;
 
 	LocalPlayerName = FString(TEXT("Player"));
 }
@@ -75,7 +79,7 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction(TEXT("Jump"), IE_Pressed, this, &ABlasterCharacter::Jump);
 	PlayerInputComponent->BindAction(TEXT("Equip"), IE_Pressed, this, &ABlasterCharacter::EquipButtonPressed);
 	PlayerInputComponent->BindAction(TEXT("Crouch"), IE_Pressed, this, &ABlasterCharacter::CrouchButtonPressed);
 	PlayerInputComponent->BindAction(TEXT("Aim"), IE_Pressed, this, &ABlasterCharacter::AimButtonPressed);
@@ -175,6 +179,20 @@ void ABlasterCharacter::AimButtonReleased()
 	if (Combat)
 	{
 		Combat->SetAiming(false);
+	}
+}
+
+void ABlasterCharacter::Jump()
+{
+	// 스페이스바를 눌렀는데 앉아있는 상태라면 일어서고
+	if (bIsCrouched)
+	{
+		UnCrouch();
+	}
+	else
+	{
+		// 앉아있는 상태가 아니라면 점프를 진행한다.
+		Super::Jump();
 	}
 }
 
@@ -344,5 +362,4 @@ void ABlasterCharacter::ServerSetPlayerName_Implementation(const FString& Player
 		// ClientSetName함수를 호출해 클라이언트에서 플레이어 이름을 설정
 		ClientSetName(PlayerName);
 	}
-
 }
