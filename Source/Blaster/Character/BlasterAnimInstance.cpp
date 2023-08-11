@@ -40,6 +40,7 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	bIsCrouched = BlasterCharacter->bIsCrouched;
 	bAiming = BlasterCharacter->IsAiming();
 	TurningInPlace = BlasterCharacter->GetTurningInPlace();
+	bRotateRootBone = BlasterCharacter->ShouldRotateRootBone();
 
 	// 글로벌 Rotation이다. 캐릭터 축 기준이 아님 범위 : -180 ~ 180
 	// Offset Yaw For Strafing
@@ -77,5 +78,27 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 		// 계산된 위치 OutPosition와 회전 OutRotation으로 LeftHandTransform의 위치와 회전을 업데이트
 		LeftHandTransform.SetLocation(OutPosition);
 		LeftHandTransform.SetRotation(FQuat(OutRotation));
+
+		if (BlasterCharacter->IsLocallyControlled())
+		{
+			bLocallyControlled = true;
+			// 오른손의 회전을 타겟에 맞춰야함
+			FTransform RightHandTransform = BlasterCharacter->GetMesh()->GetSocketTransform(FName("RightHandSocket"), ERelativeTransformSpace::RTS_World);
+			// 왼손에서 타겟의 로테이션값을 추출
+			//RightHandRotation = UKismetMathLibrary::FindLookAtRotation(RightHandTransform.GetLocation(), RightHandTransform.GetLocation() + (RightHandTransform.GetLocation() - BlasterCharacter->GetHitTarget()));
+			FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(RightHandTransform.GetLocation(), RightHandTransform.GetLocation() + (RightHandTransform.GetLocation() - BlasterCharacter->GetHitTarget()));
+			RightHandRotation = FMath::RInterpTo(RightHandRotation, LookAtRotation, DeltaTime, 30.f);
+		}
+
+
+
+		//FTransform MuzzleTipTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("MuzzleFlash"), ERelativeTransformSpace::RTS_World);
+		//// 총구 머즐소켓의 X충 방향의 FVector값
+		//FVector MuzzleX(FRotationMatrix(MuzzleTipTransform.GetRotation().Rotator()).GetUnitAxis(EAxis::X));
+		//// 총구의 끝과 타겟이 얼마나 어긋나 있는지 확인하기 위한 디버그 라인
+		//// 총구의 전방 라인
+		//DrawDebugLine(GetWorld(), MuzzleTipTransform.GetLocation(), MuzzleTipTransform.GetLocation() + MuzzleX * 1000.f, FColor::Red);
+		//// 머즐에서 타겟 라인
+		//DrawDebugLine(GetWorld(), MuzzleTipTransform.GetLocation(), BlasterCharacter->GetHitTarget(), FColor::Orange);
 	}
 }

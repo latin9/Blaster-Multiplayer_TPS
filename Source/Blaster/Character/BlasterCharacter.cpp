@@ -14,6 +14,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "BlasterAnimInstance.h"
+#include "../Blaster.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -41,7 +42,10 @@ ABlasterCharacter::ABlasterCharacter()
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 	// 캡슐충돌체와 스켈레탈 메쉬가 카메라와 충돌하지 않는다.
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+	// 콜리전 프로파일을 SkeletalMesh 프로파일로 설정
+	GetMesh()->SetCollisionObjectType(ECC_SkeletalMesh);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	GetCharacterMovement()->RotationRate = FRotator(0.0, 0.0, 850.0);
 
 	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
@@ -63,7 +67,22 @@ void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	AimOffset(DeltaTime);
+	if (GetLocalRole() > ENetRole::ROLE_SimulatedProxy && IsLocallyControlled())
+	{
+		AimOffset(DeltaTime);
+	}
+	else
+	{
+		TimeSinceLastMovementReplication += DeltaTime;
+
+		if (TimeSinceLastMovementReplication > 0.25f)
+		{
+			OnRep_ReplicatedMovement();
+		}
+		CalculateAO_Pitch();
+	}
+
+	HideCameraIfCharacterClose();
 }
 
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -116,6 +135,32 @@ void ABlasterCharacter::PlayFireMontage(bool bAiming)
 		// FireWeaponMontage에 지정해놓은 몽타주 섹션 이름을 얻어온다.
 		FName SectionName;
 		SectionName = bAiming ? FName("RifleAim") : FName("RifleHip");
+		// 해당 함수에 몽타주 섹션 이름을 넣어주면 해당 위치의 섹션으로 건너뒤어서 실행한다.
+		AnimInstance->Montage_JumpToSection(SectionName);
+	}
+}
+
+void ABlasterCharacter::OnRep_ReplicatedMovement()
+{
+	Super::OnRep_ReplicatedMovement();
+
+	SimproxiesTurn();
+	// 움직임을 복제했으니 0으로 설정
+	TimeSinceLastMovementReplication = 0.f;
+}
+
+void ABlasterCharacter::PlayHitReactMontage()
+{
+	if (Combat == nullptr || Combat->EquippedWeapon == nullptr)
+		return;
+
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && HitReactMontage)
+	{
+		AnimInstance->Montage_Play(HitReactMontage);
+		// FireWeaponMontage에 지정해놓은 몽타주 섹션 이름을 얻어온다.
+		FName SectionName("FromFront");
+
 		// 해당 함수에 몽타주 섹션 이름을 넣어주면 해당 위치의 섹션으로 건너뒤어서 실행한다.
 		AnimInstance->Montage_JumpToSection(SectionName);
 	}
@@ -201,6 +246,110 @@ void ABlasterCharacter::AimButtonReleased()
 	}
 }
 
+float ABlasterCharacter::CalculateSpeed()
+{
+	FVector Velocity = GetVelocity();
+	Velocity.Z = 0.0;
+
+	return Velocity.Size();
+}
+
+void ABlasterCharacter::AimOffset(float DeltaTime)
+{
+	// 들고있는 무기가 있어야됨.
+	if (Combat && Combat->EquippedWeapon == nullptr)
+		return;
+
+	// 캐릭터가 움직이지 않을때만 실행되어야함
+	float Speed = CalculateSpeed();
+	bool bIsInAir = GetCharacterMovement()->IsFalling();
+
+	// 가만히 서있고 점프를 안할때
+	if (Speed == 0.f && !bIsInAir)
+	{
+		bRotateRootBone = true;
+		FRotator CurrentAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(CurrentAimRotation, StartingAimRotation);
+		AO_Yaw = DeltaAimRotation.Yaw;
+		if (TurningInPlace == ETurningInPlace::ETIP_NotTurning)
+		{
+			InterpAO_Yaw = AO_Yaw;
+		}
+		bUseControllerRotationYaw = true;
+		TurnInPlace(DeltaTime);
+	}
+	// 달리거나 뛸때
+	if (Speed > 0.f || bIsInAir)
+	{
+		bRotateRootBone = false;
+		// FRotator로 저장하는 이유는 델타를 얻을것이기 때문
+		StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		AO_Yaw = 0.f;
+		bUseControllerRotationYaw = true;
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+	}
+	CalculateAO_Pitch();
+}
+
+void ABlasterCharacter::CalculateAO_Pitch()
+{
+
+	// 플레이어 AimOffset에서 Pitch가 0보다 작아지면 360으로 변경된다.(압축과정?)
+	// 그래서 360 부터 270까지를 0부터 -90으로 변경하는것이다.
+	// 그래야 피치의 구간이 -90 ~ 90이 되어 자연스러운 AimOffset이 가능함
+	AO_Pitch = GetBaseAimRotation().Pitch;
+	if (AO_Pitch > 90.f && !IsLocallyControlled())
+	{
+		// map ptich from [270, 360] to [-90, 0]
+		FVector2D InRange(270.f, 360.f);
+		FVector2D OutRange(-90.f, 0.f);
+		// 해당 값은 압축되어 네트워크를 통해 전송되고 0~360 사이의 범위로 압축 해제된 후 변경되어 해당 범위(-90 ~ 0)를 갖게됨
+		AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Pitch);
+	}
+}
+
+void ABlasterCharacter::SimproxiesTurn()
+{
+	if (Combat == nullptr || Combat->EquippedWeapon == nullptr)
+		return;
+
+	// 시뮬레이션 프록시가 아닌경우
+	// 서버나 클라이언트에서 로컬로 제어될경우
+	bRotateRootBone = false;
+	float Speed = CalculateSpeed();
+
+	if (Speed > 0.f)
+	{
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+		return;
+	}
+
+
+	ProxyRotationLastFrame = ProxyRotation;
+	ProxyRotation = GetActorRotation();
+	ProxyYaw = UKismetMathLibrary::NormalizedDeltaRotator(ProxyRotation, ProxyRotationLastFrame).Yaw;
+
+	// 프록시의 Yaw의 절대값이 TurnThreshold보다 크다면
+	if (FMath::Abs(ProxyYaw) > TurnThreshold)
+	{
+		if (ProxyYaw > TurnThreshold)
+		{
+			TurningInPlace = ETurningInPlace::ETIP_Right;
+		}
+		else if (ProxyYaw < -TurnThreshold)
+		{
+			TurningInPlace = ETurningInPlace::ETIP_Left;
+		}
+		else
+		{
+			TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+		}
+		return;
+	}
+
+	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+}
+
 void ABlasterCharacter::Jump()
 {
 	// 스페이스바를 눌렀는데 앉아있는 상태라면 일어서고
@@ -232,55 +381,6 @@ void ABlasterCharacter::FireButtonReleased()
 	}
 }
 
-void ABlasterCharacter::AimOffset(float DeltaTime)
-{
-	// 들고있는 무기가 있어야됨.
-	if (Combat && Combat->EquippedWeapon == nullptr)
-		return;
-
-	// 캐릭터가 움직이지 않을때만 실행되어야함
-	FVector Velocity = GetVelocity();
-	Velocity.Z = 0.0;
-
-	float Speed = Velocity.Size();
-	bool bIsInAir = GetCharacterMovement()->IsFalling();
-
-	// 가만히 서있고 점프를 안할때
-	if (Speed == 0.f && !bIsInAir)
-	{
-		FRotator CurrentAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
-		FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(CurrentAimRotation, StartingAimRotation);
-		AO_Yaw = DeltaAimRotation.Yaw;
-		if (TurningInPlace == ETurningInPlace::ETIP_NotTurning)
-		{
-			InterpAO_Yaw = AO_Yaw;
-		}
-		bUseControllerRotationYaw = true;
-		TurnInPlace(DeltaTime);
-	}
-	// 달리거나 뛸때
-	if (Speed > 0.f || bIsInAir)
-	{
-		// FRotator로 저장하는 이유는 델타를 얻을것이기 때문
-		StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
-		AO_Yaw = 0.f;
-		bUseControllerRotationYaw = true;
-		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
-	}
-
-	// 플레이어 AimOffset에서 Pitch가 0보다 작아지면 360으로 변경된다.(압축과정?)
-	// 그래서 360 부터 270까지를 0부터 -90으로 변경하는것이다.
-	// 그래야 피치의 구간이 -90 ~ 90이 되어 자연스러운 AimOffset이 가능함
-	AO_Pitch = GetBaseAimRotation().Pitch;
-	if (AO_Pitch > 90.f && !IsLocallyControlled())
-	{
-		// map ptich from [270, 360] to [-90, 0]
-		FVector2D InRange(270.f, 360.f);
-		FVector2D OutRange(-90.f, 0.f);
-		// 해당 값은 압축되어 네트워크를 통해 전송되고 0~360 사이의 범위로 압축 해제된 후 변경되어 해당 범위(-90 ~ 0)를 갖게됨
-		AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Pitch);
-	}
-}
 
 void ABlasterCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 {
@@ -332,6 +432,31 @@ void ABlasterCharacter::TurnInPlace(float DeltaTime)
 	}
 }
 
+void ABlasterCharacter::HideCameraIfCharacterClose()
+{
+	if (!IsLocallyControlled())
+		return;
+
+	// 플레이어와 카메라의 거리가 CameraThreshold보다 작아진다면 카메라와 무기를 안 보이도록 설정
+	// 그래야 벽근처에 숨어있어도 이상하게 보이지 않는다.
+	if ((FollowCamera->GetComponentLocation() - GetActorLocation()).Size() < CameraThreshold)
+	{
+		GetMesh()->SetVisibility(false);
+		if (Combat && Combat->EquippedWeapon && Combat->EquippedWeapon->GetWeaponMesh())
+		{
+			Combat->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = true;
+		}
+	}
+	else
+	{
+		GetMesh()->SetVisibility(true);
+		if (Combat && Combat->EquippedWeapon && Combat->EquippedWeapon->GetWeaponMesh())
+		{
+			Combat->EquippedWeapon->GetWeaponMesh()->bOwnerNoSee = false;
+		}
+	}
+}
+
 void ABlasterCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 {
 	// 호스트 클라이언트일 경우
@@ -376,6 +501,19 @@ AWeapon* ABlasterCharacter::GetEquippedWeapon()
 		return nullptr; 
 
 	return Combat->EquippedWeapon;
+}
+
+FVector ABlasterCharacter::GetHitTarget() const
+{
+	if (Combat == nullptr)
+		return FVector();
+
+	return Combat->HitTarget;
+}
+
+void ABlasterCharacter::MulticastHit_Implementation()
+{
+	PlayHitReactMontage();
 }
 
 void ABlasterCharacter::ClientSetName_Implementation(const FString& Name)

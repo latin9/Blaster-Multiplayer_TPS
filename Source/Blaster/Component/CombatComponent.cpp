@@ -11,7 +11,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
 #include "../PlayerController/BlasterPlayerController.h"
-#include "../HUD/BlasterHUD.h"
+#include "Camera/CameraComponent.h"
+#include "TimerManager.h"
 
 UCombatComponent::UCombatComponent()
 {
@@ -29,6 +30,13 @@ void UCombatComponent::BeginPlay()
 	if (Character)
 	{
 		Character->GetCharacterMovement()->MaxWalkSpeed = BaseWalkSpeed;
+
+		if (Character->GetFollowCamera())
+		{
+			// 캐릭터의 카메라가 사용중인 FOV값
+			DefaultFOV = Character->GetFollowCamera()->FieldOfView;
+			CurrentFOV = DefaultFOV;
+		}
 	}
 
 }
@@ -37,8 +45,15 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	SetHUDCrosshairs(DeltaTime);
+	if (Character && Character->IsLocallyControlled())
+	{
+		FHitResult HitResult;
+		TraceUnderCrosshairs(HitResult);
+		HitTarget = HitResult.ImpactPoint;
 
+		SetHUDCrosshairs(DeltaTime);
+		InterpFOV(DeltaTime);
+	}
 }
 
 void UCombatComponent::SetAiming(bool bIsAiming)
@@ -78,9 +93,26 @@ void UCombatComponent::FireButtonPressed(bool bPressed)
 
 	if (bFireButtonPressed)
 	{
-		FHitResult HitResult;
-		TraceUnderCrosshairs(HitResult);
-		ServerFire(HitResult.ImpactPoint);
+		Fire();
+	}
+}
+
+void UCombatComponent::Fire()
+{
+	if (bCanFire)
+	{
+		bCanFire = false;
+
+		ServerFire(HitTarget);
+
+		if (EquippedWeapon)
+		{
+			CrosshairShootingFactor = 0.75f;
+		}
+
+		// 총을 발사한 뒤 FireTimer를 실행한다.
+		// 그래야 총을 쏜 뒤의 딜레이 만큼 실행
+		StartFireTimer();
 	}
 }
 
@@ -148,11 +180,28 @@ void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
 	if (bScreenToWorld)
 	{
 		FVector Start = CrosshairWorldPosition;
+		if (Character)
+		{
+			float DistanceToCharacter = (Character->GetActorLocation() - Start).Size();
+			Start += CrosshairWorldDirection * (DistanceToCharacter + 100.f);
+			//DrawDebugSphere(GetWorld(), Start, 16.f, 12, FColor::Red, false);
+		}
 		FVector End = Start + CrosshairWorldDirection * TRACE_LENGTH;
 
 		GetWorld()->LineTraceSingleByChannel(TraceHitResult, Start, End,
 			ECollisionChannel::ECC_Visibility);
 
+		// Character가 Interface를 상속받은 상태기 때문에
+		// TraceHit된 객체가 Character라면 Crosshair를 빨간색으로 변경
+		if (TraceHitResult.GetActor() && TraceHitResult.GetActor()->Implements<UInteractWithCrosshairsInterface>())
+		{
+			HUDPackage.CrosshairsColor = FLinearColor::Red;
+		}
+		else
+		{
+			// Trace가 벽에 충돌했다면 White로 변경
+			HUDPackage.CrosshairsColor = FLinearColor::White;
+		}
 		// 트레이스 끝이 충돌되지 않았을때는 강제로 끝 충돌위치를 End로 지정
 		if (!TraceHitResult.bBlockingHit)
 		{
@@ -176,7 +225,6 @@ void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
 
 		if (HUD)
 		{
-			FHUDPackage HUDPackage;
 			// 장착된 무기가 있다면 HUD지정하고 장착된 무기에 따른 크로스 헤어 지정
 			if (EquippedWeapon)
 			{
@@ -195,9 +243,96 @@ void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
 				HUDPackage.CrosshairTop = nullptr;
 				HUDPackage.CrosshairBottom = nullptr;
 			}
+			// 크로스헤어 십자선 확장 계산
+			// 플레이어 최대속도
+			FVector2D WalkSpeedRange(0.f, Character->GetCharacterMovement()->MaxWalkSpeed);
+			// 플레이어 맵핑 범위
+			FVector2D VelocityMultiplierRange(0.f, 1.f);
+			// 플레이어 현재 속도 : z는 0
+			FVector Velocity = Character->GetVelocity();
+			Velocity.Z = 0.f;
+
+			// 플레이어 현재의 범위 맵핑된 값을 구함
+			// 0 ~ 1의 값이 나오게됨
+			CrosshairVelocityFactor = FMath::GetMappedRangeValueClamped(WalkSpeedRange, VelocityMultiplierRange, Velocity.Size());
+
+			if (Character->GetCharacterMovement()->IsFalling())
+			{
+				CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor, 2.25f, DeltaTime, 2.25f);
+			}
+			else
+			{
+				CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor, 0.f, DeltaTime, 30.f);
+			}
+
+			if (bAiming)
+			{
+				CrosshairAimFactor = FMath::FInterpTo(CrosshairAimFactor, 0.58f, DeltaTime, 30.f);
+			}
+			else
+			{
+				CrosshairAimFactor = FMath::FInterpTo(CrosshairAimFactor, 0.f, DeltaTime, 30.f);
+			}
+
+			// 총을 발사할때 CrosshairShootingFactor를 0.2f로 지정해놓으면 알아서 여기서 0으로 보간되며 줄어듬
+			CrosshairShootingFactor = FMath::FInterpTo(CrosshairShootingFactor, 0.f, DeltaTime, 30.f);
+
+			HUDPackage.CrosshairSpread = 0.5f + CrosshairVelocityFactor + 
+				CrosshairInAirFactor - 
+				CrosshairAimFactor + 
+				CrosshairShootingFactor;
 
 			HUD->SetHUDPackage(HUDPackage);
 		}
+	}
+}
+
+void UCombatComponent::InterpFOV(float DeltaTime)
+{
+	if (EquippedWeapon == nullptr)
+		return;
+
+	if (bAiming)
+	{
+		// 줌을 하는순간 무기마다의 줌 속도를 갖고 해당 줌 속도만큼 줌이 된다
+		CurrentFOV = FMath::FInterpTo(CurrentFOV, EquippedWeapon->GetZoomedFOV(), DeltaTime, EquippedWeapon->GetZoomInterpSpeed());
+	}
+	else
+	{
+		// 줌이 끝나면 기존의 FOV값으로 되돌린다
+		CurrentFOV = FMath::FInterpTo(CurrentFOV, DefaultFOV, DeltaTime, ZoomInterpSpeed);
+	}
+
+	// 최종적으로 카메라 FOV 변경
+	if (Character && Character->GetFollowCamera())
+	{
+		Character->GetFollowCamera()->SetFieldOfView(CurrentFOV);
+	}
+}
+
+void UCombatComponent::StartFireTimer()
+{
+	if (EquippedWeapon == nullptr || Character == nullptr)
+		return;
+
+	Character->GetWorldTimerManager().SetTimer(
+		FireTimer,
+		this,
+		&UCombatComponent::FireTimerFinished,
+		EquippedWeapon->FireDelay
+	);
+}
+
+void UCombatComponent::FireTimerFinished()
+{
+	if (EquippedWeapon == nullptr || Character == nullptr)
+		return;
+
+	bCanFire = true;
+	// 자동화기 무기여야지만 가능
+	if (bFireButtonPressed && EquippedWeapon->bAutomatic)
+	{
+		Fire();
 	}
 }
 

@@ -16,6 +16,8 @@ public:
 	class UTexture2D* CrosshairRight;
 	class UTexture2D* CrosshairTop;
 	class UTexture2D* CrosshairBottom;
+	float CrosshairSpread;	// 십자선을 얼마나 벌려야 하는지 알려주는 값(이동하거나 그럴떄)
+	FLinearColor CrosshairsColor;
 };
 
 /**
@@ -32,7 +34,10 @@ public:
 private:
 	FHUDPackage HUDPackage;
 
-	void DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter);
+	void DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter, FVector2D Spread, FLinearColor CrosshairColor);
+
+	UPROPERTY(EditAnywhere)
+	float CrosshairSpreadMax = 16.f;
 
 public:
 	FORCEINLINE void SetHUDPackage(const FHUDPackage& Package) { HUDPackage = Package; }

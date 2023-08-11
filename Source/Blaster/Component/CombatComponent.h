@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "../HUD/BlasterHUD.h"
 #include "CombatComponent.generated.h"
 
 #define TRACE_LENGTH 80000
@@ -36,6 +37,8 @@ protected:
 
 	void FireButtonPressed(bool bPressed);
 
+	void Fire();
+
 	UFUNCTION(Server, Reliable)
 	void ServerFire(const FVector_NetQuantize& TraceHitTarget);
 	
@@ -50,7 +53,7 @@ protected:
 private:
 	class ABlasterCharacter* Character;
 	class ABlasterPlayerController* Controller;
-	class ABlasterHUD* HUD;
+	ABlasterHUD* HUD;
 	// 장착된 무기를 저정하기 위함
 
 	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon)
@@ -67,6 +70,41 @@ private:
 	float AimWalkSpeed;
 
 	bool bFireButtonPressed;
+
+	// HUD and Crosshairs
+	float CrosshairVelocityFactor;
+	float CrosshairInAirFactor;
+	float CrosshairAimFactor;
+	float CrosshairShootingFactor;
+
+	FVector HitTarget;
+
+	FHUDPackage HUDPackage;
+
+	// Aiming and FOV
+
+	// 조준하지 않을때의 FOV값(시야) BeginPlay에서 카메라의 기본 FOV로 설정
+	float DefaultFOV;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+	float ZoomedFOV = 30.f;
+
+	float CurrentFOV;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+	float ZoomInterpSpeed = 20.f;
+
+	void InterpFOV(float DeltaTime);
+
+	// 자동 라이플 발사
+	FTimerHandle FireTimer;
+
+	bool bCanFire = true;
+
+	void StartFireTimer();
+	// 타이머 끝났을때의 콜백함수
+	void FireTimerFinished();
+
 
 public:	
 

@@ -5,10 +5,11 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "../BlasterType/TurningInPlace.h"
+#include "../Interfaces/InteractWithCrosshairsInterface.h"
 #include "BlasterCharacter.generated.h"
 
 UCLASS()
-class BLASTER_API ABlasterCharacter : public ACharacter
+class BLASTER_API ABlasterCharacter : public ACharacter, public IInteractWithCrosshairsInterface
 {
 	GENERATED_BODY()
 
@@ -19,6 +20,9 @@ public:
 	virtual void PostInitializeComponents()	override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	void PlayFireMontage(bool bAiming);
+
+	// 시뮬레이션 프록시에 대한 캐릭터 회전의 델타를 확인할 때 틱 기능 대신 이것을 사용
+	virtual void OnRep_ReplicatedMovement() override;
 protected:
 	virtual void BeginPlay() override;
 
@@ -31,13 +35,17 @@ protected:
 	void CrouchButtonPressed();
 	void AimButtonPressed();
 	void AimButtonReleased();
+	float CalculateSpeed();
+	void AimOffset(float DeltaTime);
+	void CalculateAO_Pitch();
+	void SimproxiesTurn();
 	virtual void Jump() override;
 	void FireButtonPressed();
 	void FireButtonReleased();
+	void PlayHitReactMontage();
 
 
 protected:
-	void AimOffset(float DeltaTime);
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = Camera)
@@ -79,6 +87,20 @@ private:
 	UPROPERTY(EditAnywhere, Category = Combat)
 	class UAnimMontage* FireWeaponMontage;
 
+	UPROPERTY(EditAnywhere, Category = Combat)
+	class UAnimMontage* HitReactMontage;
+
+	void HideCameraIfCharacterClose();
+	UPROPERTY(EditAnywhere)
+	float CameraThreshold = 200.f;
+
+	bool bRotateRootBone;
+	float TurnThreshold = 0.25f;
+	FRotator ProxyRotationLastFrame;
+	FRotator ProxyRotation;
+	float ProxyYaw;
+	float TimeSinceLastMovementReplication;
+
 public:
 	void SetOverlappingWeapon(AWeapon* Weapon);
 	bool IsWeaponEquipped();
@@ -87,12 +109,17 @@ public:
 	FORCEINLINE float GetAO_Pitch() const { return AO_Pitch; }
 	AWeapon* GetEquippedWeapon();
 	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace; }
-
+	FVector GetHitTarget()	const;
+	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
 public:
 	UFUNCTION(Client, Reliable)
 	void ClientSetName(const FString& Name);
 
 	UFUNCTION(Server, Reliable)
 	void ServerSetPlayerName(const FString& PlayerName);
+
+	UFUNCTION(NetMulticast, Unreliable)
+		void MulticastHit();
 
 };

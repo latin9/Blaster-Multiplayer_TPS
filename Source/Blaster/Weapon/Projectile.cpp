@@ -6,6 +6,8 @@
 #include "particles/ParticleSystemComponent.h"
 #include "particles/ParticleSystem.h"
 #include "Sound/SoundCue.h"
+#include "../Character/BlasterCharacter.h"
+#include "../Blaster.h"
 
 AProjectile::AProjectile()
 {
@@ -22,7 +24,8 @@ AProjectile::AProjectile()
 	// 벽에 부딪히기 때문
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
 	CollisionBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
-
+	CollisionBox->SetCollisionResponseToChannel(ECC_SkeletalMesh, ECollisionResponse::ECR_Block);
+	
 	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
 	// 총알이 속도에 맞춰서 회전
 	// 중력으로 인한 회전이 해당 궤적을 따라 회전함
@@ -57,6 +60,11 @@ void AProjectile::BeginPlay()
 void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, 
 	FVector NormalImpulse, const FHitResult& Hit)
 {
+	ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(OtherActor);
+	if (BlasterCharacter)
+	{
+		BlasterCharacter->MulticastHit();
+	}
 	// 충돌이 됐으면 해당 프로젝타일 액터는 제거되어야함
 	// 해당 액터는 bReplicates된 엑터이기 때문에
 	// 서버에서 Destroy를 실행하면 Destroyed()함수가 실행되고
