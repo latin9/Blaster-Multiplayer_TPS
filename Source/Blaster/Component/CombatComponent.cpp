@@ -218,7 +218,7 @@ void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
 	// 컨트롤러 지정
 	Controller = Controller == nullptr ? Cast<ABlasterPlayerController>(Character->Controller) : Controller;
 
-	// HUD 지정
+	// HUD 세팅
 	if (Controller)
 	{
 		HUD = HUD == nullptr ? Cast<ABlasterHUD>(Controller->GetHUD()) : HUD;

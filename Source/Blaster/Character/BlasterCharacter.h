@@ -43,7 +43,10 @@ protected:
 	void FireButtonPressed();
 	void FireButtonReleased();
 	void PlayHitReactMontage();
-
+	
+	UFUNCTION()
+	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
+	void UpdateHUDHealth();
 
 protected:
 
@@ -101,6 +104,19 @@ private:
 	float ProxyYaw;
 	float TimeSinceLastMovementReplication;
 
+	// Player Health
+	UPROPERTY(EditAnywhere, Category = "Player Stats")
+	float MaxHealth = 100.f;
+
+	// 현재 체력
+	UPROPERTY(ReplicatedUsing = OnRep_Health, VisibleAnywhere, Category = "Player Stats")
+	float Health = 100.f;
+
+	UFUNCTION()
+	void OnRep_Health();
+
+	class ABlasterPlayerController* BlasterPlayerController;
+
 public:
 	void SetOverlappingWeapon(AWeapon* Weapon);
 	bool IsWeaponEquipped();
@@ -119,7 +135,5 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerSetPlayerName(const FString& PlayerName);
 
-	UFUNCTION(NetMulticast, Unreliable)
-		void MulticastHit();
 
 };

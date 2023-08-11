@@ -15,6 +15,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "BlasterAnimInstance.h"
 #include "../Blaster.h"
+#include "../PlayerController/BlasterPlayerController.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -60,6 +61,13 @@ void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	UpdateHUDHealth();
+
+	// 서버에서만 데미지 줘야함
+	if (HasAuthority())
+	{
+		OnTakeAnyDamage.AddDynamic(this, &ABlasterCharacter::ReceiveDamage);
+	}
 	//ServerSetPlayerName(LocalPlayerName);
 }
 
@@ -121,6 +129,7 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	// 속성이 오직 소유자에게만 복제되어야 함을 의미
 	// .즉, OverlappingWeapon 속성은 ABlasterCharacter를 소유한 클라이언트에게만 복제될 것입니다.
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
+	DOREPLIFETIME(ABlasterCharacter, Health);
 }
 
 void ABlasterCharacter::PlayFireMontage(bool bAiming)
@@ -163,6 +172,26 @@ void ABlasterCharacter::PlayHitReactMontage()
 
 		// 해당 함수에 몽타주 섹션 이름을 넣어주면 해당 위치의 섹션으로 건너뒤어서 실행한다.
 		AnimInstance->Montage_JumpToSection(SectionName);
+	}
+}
+
+void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, 
+	AController* InstigatorController, AActor* DamageCauser)
+{
+	// Health는 복제중 그래서 값이 바뀌는 순간 OnRep_Health()함수가 실행됨
+	Health = FMath::Clamp(Health - Damage, 0.f, MaxHealth);
+	// HUD 업데이트하고 몽타주 실행
+	UpdateHUDHealth();
+	PlayHitReactMontage();
+}
+
+void ABlasterCharacter::UpdateHUDHealth()
+{
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
+
+	if (BlasterPlayerController)
+	{
+		BlasterPlayerController->SetHUDHealth(Health, MaxHealth);
 	}
 }
 
@@ -457,30 +486,26 @@ void ABlasterCharacter::HideCameraIfCharacterClose()
 	}
 }
 
+void ABlasterCharacter::OnRep_Health()
+{
+	// HUD 업데이트하고 몽타주 실행
+	UpdateHUDHealth();
+	PlayHitReactMontage();
+}
+
 void ABlasterCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 {
-	// 호스트 클라이언트일 경우
+	if (OverlappingWeapon)
+	{
+		OverlappingWeapon->ShowPickupWidget(false);
+	}
+	OverlappingWeapon = Weapon;
 	if (IsLocallyControlled())
 	{
-		// 만약 이미 OverlappingWeapon이 있다면, 그 무기의 PickupWidget를 숨김
-		if (OverlappingWeapon)
-		{
-			OverlappingWeapon->ShowPickupWidget(false);
-		}
-
-		// OverlappingWeapon을 새로운 무기로 설정
-		OverlappingWeapon = Weapon;
-
-		// 만약 새로 설정된 OverlappingWeapon이 있다면, 그 무기의 PickupWidget를 보여줌
 		if (OverlappingWeapon)
 		{
 			OverlappingWeapon->ShowPickupWidget(true);
 		}
-	}
-	// 호스트 클라이언트가 아닌 경우, OverlappingWeapon만 설정
-	else
-	{
-		OverlappingWeapon = Weapon;
 	}
 }
 
@@ -509,11 +534,6 @@ FVector ABlasterCharacter::GetHitTarget() const
 		return FVector();
 
 	return Combat->HitTarget;
-}
-
-void ABlasterCharacter::MulticastHit_Implementation()
-{
-	PlayHitReactMontage();
 }
 
 void ABlasterCharacter::ClientSetName_Implementation(const FString& Name)
