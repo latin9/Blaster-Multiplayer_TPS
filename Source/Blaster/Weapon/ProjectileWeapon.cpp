@@ -11,7 +11,10 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 
 	// 권한이 없으면 return
 	if (!HasAuthority())
+	{
 		return;
+	}
+
 
 	// 서버에서만 실행
 	APawn* InstigatorPawn = Cast<APawn>(GetOwner());

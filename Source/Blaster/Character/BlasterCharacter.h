@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "../BlasterType/TurningInPlace.h"
 #include "../Interfaces/InteractWithCrosshairsInterface.h"
+#include "Components/TimelineComponent.h"
 #include "BlasterCharacter.generated.h"
 
 UCLASS()
@@ -20,9 +21,26 @@ public:
 	virtual void PostInitializeComponents()	override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	void PlayFireMontage(bool bAiming);
-
+	void PlayElimMontage();
 	// 시뮬레이션 프록시에 대한 캐릭터 회전의 델타를 확인할 때 틱 기능 대신 이것을 사용
 	virtual void OnRep_ReplicatedMovement() override;
+
+	// 게임 모드는 서버에만 존재하고 서버에서 Elim을 실행하기 때문에 여긴 서버에 해당
+	void Elim();
+	// 죽는것은 신뢰해야됨 중요한작업
+	// 서버에서만 실행되면 안된다.
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastElim();
+	
+	UFUNCTION(Server, Reliable)
+	void ServerElimDestroyed();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastElimDestroyed();
+
+
+	virtual void Destroyed() override;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -93,6 +111,9 @@ private:
 	UPROPERTY(EditAnywhere, Category = Combat)
 	class UAnimMontage* HitReactMontage;
 
+	UPROPERTY(EditAnywhere, Category = Combat)
+	class UAnimMontage* ElimMontage;
+
 	void HideCameraIfCharacterClose();
 	UPROPERTY(EditAnywhere)
 	float CameraThreshold = 200.f;
@@ -117,6 +138,46 @@ private:
 
 	class ABlasterPlayerController* BlasterPlayerController;
 
+	bool bElimmed = false;
+
+	FTimerHandle ElimTimer;
+	// 무조건 초기값으로만 설정가능
+	UPROPERTY(EditDefaultsOnly)
+	float ElimDelay = 3.f;
+	void ElimTimerFinished();
+
+	// Dissolve Effect
+	UPROPERTY(VisibleAnywhere)
+	UTimelineComponent* DissolveTimeline;
+
+	FOnTimelineFloat DissolveTrack;
+
+	UPROPERTY(EditAnywhere)
+	UCurveFloat* DissolveCurve;
+	
+	UFUNCTION()
+	void UpdateDissolveMaterial(float DissolveValue);
+	void StartDissolve();
+
+	// 런타임에 생성하는 동적 인스턴스를 저장하기 위해 사용
+	UPROPERTY(VisibleAnywhere, Category = Elim)
+	UMaterialInstanceDynamic* DynamicDissolveMaterialInstance;
+
+	// 블루프린트에 설정된 머티리얼 인스턴스, 동적 미터리얼 인스턴스와 함께 사용
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* DissolveMaterialInstance;
+
+	// Elimbot
+	UPROPERTY(EditAnywhere)
+	class UParticleSystem* ElimBotEffect;
+
+	UPROPERTY(VisibleAnywhere)
+	class UParticleSystemComponent* ElimBotComponent;
+
+	UPROPERTY(EditAnywhere)
+	class USoundCue* ElimBotSound;
+
+
 public:
 	void SetOverlappingWeapon(AWeapon* Weapon);
 	bool IsWeaponEquipped();
@@ -128,6 +189,7 @@ public:
 	FVector GetHitTarget()	const;
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
+	FORCEINLINE bool IsElimmed() const { return bElimmed; }
 public:
 	UFUNCTION(Client, Reliable)
 	void ClientSetName(const FString& Name);

@@ -74,6 +74,10 @@ private:
 	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bRotateRootBone;
 	
+	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	bool bElimmed;
+
+	
 public:
 	// 맨 게임 처음이나 언리얼 엔진을 로드하고 컴파일할때 실행
 	virtual void NativeInitializeAnimation() override;

@@ -41,7 +41,7 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	bAiming = BlasterCharacter->IsAiming();
 	TurningInPlace = BlasterCharacter->GetTurningInPlace();
 	bRotateRootBone = BlasterCharacter->ShouldRotateRootBone();
-
+	bElimmed = BlasterCharacter->IsElimmed();
 	// 글로벌 Rotation이다. 캐릭터 축 기준이 아님 범위 : -180 ~ 180
 	// Offset Yaw For Strafing
 	FRotator AimRotation = BlasterCharacter->GetBaseAimRotation();

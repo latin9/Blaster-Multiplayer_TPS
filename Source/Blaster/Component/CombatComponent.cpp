@@ -14,7 +14,8 @@
 #include "Camera/CameraComponent.h"
 #include "TimerManager.h"
 
-UCombatComponent::UCombatComponent()
+UCombatComponent::UCombatComponent()	:
+	bCanFire(true)
 {
 	PrimaryComponentTick.bCanEverTick = true;
 
@@ -82,6 +83,15 @@ void UCombatComponent::OnRep_EquippedWeapon()
 {
 	if (EquippedWeapon && Character)
 	{
+		// 무기가 시뮬레이션 피직스가 활성화 되어있을때는 부착이 안된다 그렇기 때문에
+		// OnRep에서 바로 변경을 먼저 해주어야한다.
+		EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+		const USkeletalMeshSocket* HandSocket = Character->GetMesh()->GetSocketByName(FName("RightHandSocket"));
+
+		if (HandSocket)
+		{
+			HandSocket->AttachActor(EquippedWeapon, Character->GetMesh());
+		}
 		Character->GetCharacterMovement()->bOrientRotationToMovement = false;
 		Character->bUseControllerRotationYaw = true;
 	}
@@ -99,7 +109,7 @@ void UCombatComponent::FireButtonPressed(bool bPressed)
 
 void UCombatComponent::Fire()
 {
-	if (bCanFire)
+	if (bCanFire && EquippedWeapon)
 	{
 		bCanFire = false;
 
