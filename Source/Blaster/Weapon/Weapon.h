@@ -26,10 +26,12 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void OnRep_Owner() override;
 	void ShowPickupWidget(bool bShowWidget);
 	virtual void Fire(const FVector& HitTarget);
 	// 무기 드랍
 	void Dropped();
+	void SetHUDAmmo();
 protected:
 	virtual void BeginPlay() override;
 
@@ -71,6 +73,27 @@ private:
 	UPROPERTY(EditAnywhere)
 	float ZoomInterpSpeed = 20.f;
 
+
+	// 다른 사람이 쓰다 버린? 무기를 먹었을때 해당 무기에 남아있는 탄 개수가 다르기 때문
+	UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_Ammo)
+	int32 Ammo;
+
+	UFUNCTION()
+	void OnRep_Ammo();
+
+	// 탄약에서 하나를 뺄 수 있고 이 무기에 유효한 소유자가 있는지 확인할 수 있다.
+	// 유효한 소유자가 있는 경우 해당 소유자의 HUD를 업데이트함
+	void SpendRound();
+
+	UPROPERTY(EditAnywhere)
+	int32 MagCapacity;
+
+	UPROPERTY()
+	class ABlasterCharacter* BlasterOwnerCharacter;
+
+	UPROPERTY()
+	class ABlasterPlayerController* BlasterOwnerController;
+
 public:
 
 	// Texture for the weapon crosshairs
@@ -102,5 +125,6 @@ public:
 	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
 	FORCEINLINE float GetZoomedFOV() const { return ZoomedFOV; }
 	FORCEINLINE float GetZoomInterpSpeed() const { return ZoomInterpSpeed; }
+	bool IsAmmoEmpty();
 
 };

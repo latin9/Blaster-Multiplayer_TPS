@@ -21,6 +21,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundCue.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "../PlayerState/BlasterPlayerState.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -99,6 +100,10 @@ void ABlasterCharacter::Elim()
 
 void ABlasterCharacter::MulticastElim_Implementation()
 {
+	if (BlasterPlayerController)
+	{
+		BlasterPlayerController->SetHUDWeaponAmmo(0);
+	}
 	bElimmed = true;
 	PlayElimMontage();
 
@@ -155,26 +160,14 @@ void ABlasterCharacter::ElimTimerFinished()
 	}
 }
 
-
-void ABlasterCharacter::MulticastElimDestroyed_Implementation()
-{
-	if (ElimBotComponent)
-	{
-		ElimBotComponent->DestroyComponent();
-	}
-}
-
-void ABlasterCharacter::ServerElimDestroyed_Implementation()
-{
-	MulticastElimDestroyed();
-}
-
 void ABlasterCharacter::Destroyed()
-{
+{	
 	Super::Destroyed();
 
 	if (ElimBotComponent)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("ElimBotComponent is not null"));
+		UE_LOG(LogTemp, Warning, TEXT("ElimBotComponent Start DestroyComponent"));
 		ElimBotComponent->DestroyComponent();
 	}
 }
@@ -213,6 +206,7 @@ void ABlasterCharacter::Tick(float DeltaTime)
 	}
 
 	HideCameraIfCharacterClose();
+	PollInit();
 }
 
 void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -602,6 +596,21 @@ void ABlasterCharacter::UpdateHUDHealth()
 	if (BlasterPlayerController)
 	{
 		BlasterPlayerController->SetHUDHealth(Health, MaxHealth);
+	}
+}
+
+void ABlasterCharacter::PollInit()
+{
+	if (BlasterPlayerState == nullptr)
+	{
+		BlasterPlayerState = GetPlayerState<ABlasterPlayerState>();
+
+		if (BlasterPlayerState)
+		{
+			// 0을 넣어 갱신만 해준다.
+			BlasterPlayerState->AddToScore(0.f);
+			BlasterPlayerState->AddToDefeats(0);
+		}
 	}
 }
 

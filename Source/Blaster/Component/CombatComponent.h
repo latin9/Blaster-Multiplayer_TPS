@@ -51,8 +51,11 @@ protected:
 	void SetHUDCrosshairs(float DeltaTime);
 
 private:
+	UPROPERTY()
 	class ABlasterCharacter* Character;
+	UPROPERTY()
 	class ABlasterPlayerController* Controller;
+	UPROPERTY()
 	ABlasterHUD* HUD;
 	// 장착된 무기를 저정하기 위함
 
@@ -105,6 +108,7 @@ private:
 	// 타이머 끝났을때의 콜백함수
 	void FireTimerFinished();
 
+	bool CanFire();
 
 public:	
 

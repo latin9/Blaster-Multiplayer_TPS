@@ -32,11 +32,11 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastElim();
 	
-	UFUNCTION(Server, Reliable)
+	/*UFUNCTION(Server, Reliable)
 	void ServerElimDestroyed();
 
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastElimDestroyed();
+	void MulticastElimDestroyed();*/
 
 
 	virtual void Destroyed() override;
@@ -65,6 +65,9 @@ protected:
 	UFUNCTION()
 	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
 	void UpdateHUDHealth();
+
+	// 관련된 모든 클래스에 대한 Poll, HUD에 유효한 데이터를 초기화 하는 함수
+	void PollInit();
 
 protected:
 
@@ -136,6 +139,7 @@ private:
 	UFUNCTION()
 	void OnRep_Health();
 
+	UPROPERTY()
 	class ABlasterPlayerController* BlasterPlayerController;
 
 	bool bElimmed = false;
@@ -177,6 +181,9 @@ private:
 	UPROPERTY(EditAnywhere)
 	class USoundCue* ElimBotSound;
 
+	UPROPERTY()
+	class ABlasterPlayerState* BlasterPlayerState;
+
 
 public:
 	void SetOverlappingWeapon(AWeapon* Weapon);
@@ -190,6 +197,8 @@ public:
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
 	FORCEINLINE bool IsElimmed() const { return bElimmed; }
+	FORCEINLINE float GetHealth() const{ return Health; }
+	FORCEINLINE float GetMaxHealth() const{ return MaxHealth; }
 public:
 	UFUNCTION(Client, Reliable)
 	void ClientSetName(const FString& Name);
