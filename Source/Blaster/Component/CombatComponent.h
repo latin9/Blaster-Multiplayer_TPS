@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "../HUD/BlasterHUD.h"
+#include "../Weapon/WeaponTypes.h"
+#include "../BlasterType/CombatState.h"
 #include "CombatComponent.generated.h"
 
 #define TRACE_LENGTH 80000
@@ -23,6 +25,9 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void EquipWeapon(class AWeapon* WeaponToEquip);
+	void Reload();
+	UFUNCTION(BlueprintCallable)
+	void FinishReloading();
 
 protected:
 	virtual void BeginPlay() override;
@@ -49,6 +54,14 @@ protected:
 
 	// 크로스 헤어 부분
 	void SetHUDCrosshairs(float DeltaTime);
+
+	UFUNCTION(Server, Reliable)
+	void ServerReload();
+
+	// 서버와 클라이언트에서 발생 모든 컴퓨터에서 발생해야할 것을 처리
+	void HandleReload();
+	
+	int32 AmountToReload();
 
 private:
 	UPROPERTY()
@@ -109,6 +122,31 @@ private:
 	void FireTimerFinished();
 
 	bool CanFire();
+
+	// 현재 장착된 무기의 소지 탄약
+	UPROPERTY(ReplicatedUsing = OnRep_CarriedAmmo)
+	int32 CarriedAmmo;
+
+	UFUNCTION()
+	void OnRep_CarriedAmmo();
+
+	// TMap은 복제가 안된다
+	TMap<EWeaponType, int32> CarriedAmmoMap;
+
+	// 라이플 첫 시작 총알 개수
+	UPROPERTY(EditAnywhere)
+	int32 StartingARAmmo = 30;
+
+	void InitializeCarriedAmmo();
+
+	// 모든 클라이언트는 전투 상태를 알아야한다
+	UPROPERTY(ReplicatedUsing = OnRep_CombatSTate)
+	ECombatState CombatState = ECombatState::ECS_Unoccupied;
+
+	UFUNCTION()
+	void OnRep_CombatState();
+
+	void UpdateAmmoValues();
 
 public:	
 

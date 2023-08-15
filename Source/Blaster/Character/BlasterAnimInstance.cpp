@@ -6,6 +6,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "../Weapon/Weapon.h"
+#include "../BlasterType/CombatState.h"
 
 void UBlasterAnimInstance::NativeInitializeAnimation()
 {
@@ -42,6 +43,7 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	TurningInPlace = BlasterCharacter->GetTurningInPlace();
 	bRotateRootBone = BlasterCharacter->ShouldRotateRootBone();
 	bElimmed = BlasterCharacter->IsElimmed();
+
 	// 글로벌 Rotation이다. 캐릭터 축 기준이 아님 범위 : -180 ~ 180
 	// Offset Yaw For Strafing
 	FRotator AimRotation = BlasterCharacter->GetBaseAimRotation();
@@ -90,7 +92,10 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 			RightHandRotation = FMath::RInterpTo(RightHandRotation, LookAtRotation, DeltaTime, 30.f);
 		}
 
-
+		// 리로딩할때는 FABRIK을 사용하면 안된다
+		bUseFABRIK = BlasterCharacter->GetCombatState() != ECombatState::ECS_Reloading;
+		bUseAimOffsets = BlasterCharacter->GetCombatState() != ECombatState::ECS_Reloading;
+		bTransformRightHand = BlasterCharacter->GetCombatState() != ECombatState::ECS_Reloading;
 
 		//FTransform MuzzleTipTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("MuzzleFlash"), ERelativeTransformSpace::RTS_World);
 		//// 총구 머즐소켓의 X충 방향의 FVector값

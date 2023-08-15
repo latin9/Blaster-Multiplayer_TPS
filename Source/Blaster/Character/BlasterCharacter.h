@@ -7,6 +7,7 @@
 #include "../BlasterType/TurningInPlace.h"
 #include "../Interfaces/InteractWithCrosshairsInterface.h"
 #include "Components/TimelineComponent.h"
+#include "../BlasterType/CombatState.h"
 #include "BlasterCharacter.generated.h"
 
 UCLASS()
@@ -21,6 +22,7 @@ public:
 	virtual void PostInitializeComponents()	override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	void PlayFireMontage(bool bAiming);
+	void PlayReloadMontage();
 	void PlayElimMontage();
 	// 시뮬레이션 프록시에 대한 캐릭터 회전의 델타를 확인할 때 틱 기능 대신 이것을 사용
 	virtual void OnRep_ReplicatedMovement() override;
@@ -51,6 +53,7 @@ protected:
 	// E 버튼 클릭(장비 장착)
 	void EquipButtonPressed();
 	void CrouchButtonPressed();
+	void ReloadButtonPressed();
 	void AimButtonPressed();
 	void AimButtonReleased();
 	float CalculateSpeed();
@@ -92,7 +95,7 @@ private:
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* Combat;
 
 	// 서버 RPC를 신뢰할 수 있도록 Reliable 선언
@@ -108,8 +111,12 @@ private:
 
 	void TurnInPlace(float DeltaTime);
 
+	// Anim Montage
 	UPROPERTY(EditAnywhere, Category = Combat)
 	class UAnimMontage* FireWeaponMontage;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+	class UAnimMontage* ReloadMontage;
 
 	UPROPERTY(EditAnywhere, Category = Combat)
 	class UAnimMontage* HitReactMontage;
@@ -199,6 +206,7 @@ public:
 	FORCEINLINE bool IsElimmed() const { return bElimmed; }
 	FORCEINLINE float GetHealth() const{ return Health; }
 	FORCEINLINE float GetMaxHealth() const{ return MaxHealth; }
+	ECombatState GetCombatState() const;
 public:
 	UFUNCTION(Client, Reliable)
 	void ClientSetName(const FString& Name);

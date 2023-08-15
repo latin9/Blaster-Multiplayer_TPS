@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "WeaponTypes.h"
 #include "Weapon.generated.h"
 
 UENUM(BlueprintType)
@@ -31,6 +32,7 @@ public:
 	virtual void Fire(const FVector& HitTarget);
 	// 무기 드랍
 	void Dropped();
+	void AddAmmo(int32 AmmoToAdd);
 	void SetHUDAmmo();
 protected:
 	virtual void BeginPlay() override;
@@ -94,6 +96,9 @@ private:
 	UPROPERTY()
 	class ABlasterPlayerController* BlasterOwnerController;
 
+	UPROPERTY(EditAnywhere)
+	EWeaponType WeaponType;
+
 public:
 
 	// Texture for the weapon crosshairs
@@ -119,6 +124,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = Combat)
 		bool bAutomatic = true;
 
+	UPROPERTY(EditAnywhere)
+	class USoundCue* EquipSound;
+
 public:	
 	void SetWeaponState(EWeaponState State);
 	FORCEINLINE USphereComponent* GetAreaSphere()	const { return AreaSphere; }
@@ -126,5 +134,8 @@ public:
 	FORCEINLINE float GetZoomedFOV() const { return ZoomedFOV; }
 	FORCEINLINE float GetZoomInterpSpeed() const { return ZoomInterpSpeed; }
 	bool IsAmmoEmpty();
+	FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; }
+	FORCEINLINE int32 GetAmmo() const { return Ammo; }
+	FORCEINLINE int32 GetMagCapacity() const { return MagCapacity; }
 
 };

@@ -13,6 +13,7 @@
 #include "../PlayerController/BlasterPlayerController.h"
 #include "Camera/CameraComponent.h"
 #include "TimerManager.h"
+#include "Sound/SoundCue.h"
 
 UCombatComponent::UCombatComponent()	:
 	bCanFire(true)
@@ -37,6 +38,11 @@ void UCombatComponent::BeginPlay()
 			// 캐릭터의 카메라가 사용중인 FOV값
 			DefaultFOV = Character->GetFollowCamera()->FieldOfView;
 			CurrentFOV = DefaultFOV;
+		}
+		// 서버에서만
+		if (Character->HasAuthority())
+		{
+			InitializeCarriedAmmo();
 		}
 	}
 
@@ -94,6 +100,17 @@ void UCombatComponent::OnRep_EquippedWeapon()
 		}
 		Character->GetCharacterMovement()->bOrientRotationToMovement = false;
 		Character->bUseControllerRotationYaw = true;
+
+		// 클라에서도 장착 사운드를 실행해주어야 서버, 클라 전부 들린다.
+		if (EquippedWeapon->EquipSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				this,
+				EquippedWeapon->EquipSound,
+				Character->GetActorLocation()
+			);
+		}
+
 	}
 }
 
@@ -159,7 +176,8 @@ void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& T
 	if (EquippedWeapon == nullptr)
 		return;
 
-	if (Character)
+	// 장전중일때는 Fire실행하면 안된다
+	if (Character && CombatState == ECombatState::ECS_Unoccupied)
 	{
 		Character->PlayFireMontage(bAiming);
 		EquippedWeapon->Fire(TraceHitTarget);
@@ -344,6 +362,11 @@ void UCombatComponent::FireTimerFinished()
 	{
 		Fire();
 	}
+	// 자동장전
+	if (EquippedWeapon->IsAmmoEmpty())
+	{
+		//Reload();
+	}
 }
 
 bool UCombatComponent::CanFire()
@@ -352,9 +375,24 @@ bool UCombatComponent::CanFire()
 		return false;
 
 	// 무기의 탄약개수가 0이 아니고 bCanFire이 false라면
-	return !EquippedWeapon->IsAmmoEmpty() || !bCanFire;
+	return !EquippedWeapon->IsAmmoEmpty() && bCanFire && CombatState == ECombatState::ECS_Unoccupied;
 }
 
+void UCombatComponent::OnRep_CarriedAmmo()
+{
+	Controller = Controller == nullptr ? Cast<ABlasterPlayerController>(Character->Controller) : Controller;
+
+	if (Controller)
+	{
+		Controller->SetHUDCarriedAmmo(CarriedAmmo);
+	}
+}
+
+void UCombatComponent::InitializeCarriedAmmo()
+{
+	// 무기 타입별 총알 개수 저장
+	CarriedAmmoMap.Emplace(EWeaponType::EWT_AssaultRifle, StartingARAmmo);
+}
 
 void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -362,8 +400,15 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
 	DOREPLIFETIME(UCombatComponent, bAiming);
+	// 갖고있는 탄약은 오로지 소유 클라이언트에서만 사용하기 때문(리로딩) 
+	// 이렇게 해야 송신되는 데이터를 최소화하면서 성능 향상이 있다.
+	// 서버는 CarriedAmmo를 다른 클라이언트에게 복제하지 않고 소유하는 클라이언트만 복제한다.
+	DOREPLIFETIME_CONDITION(UCombatComponent, CarriedAmmo, COND_OwnerOnly);
+	DOREPLIFETIME(UCombatComponent, CombatState);
 }
 
+
+// 서버 구간임
 void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 {
 	if (Character == nullptr || WeaponToEquip == nullptr)
@@ -386,7 +431,153 @@ void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 	// 무기의 소유자를 지정해줘야함
 	EquippedWeapon->SetOwner(Character);
 	EquippedWeapon->SetHUDAmmo();
+
+	// 서버에서 호출되지만 CarriedAmmo를 복제 변수로 만들었기 때문에 
+	// CarriedAmmo를 설정하는 즉시 클라이언트의 HUD를
+	// Controller->SetHUDCarriedAmmo(CarriedAmmo);를 통해 업데이트 할 수 있다.
+	if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()))
+	{
+		CarriedAmmo = CarriedAmmoMap[EquippedWeapon->GetWeaponType()];
+	}
+
+	Controller = Controller == nullptr ? Cast<ABlasterPlayerController>(Character->Controller) : Controller;
+
+	if (Controller)
+	{
+		Controller->SetHUDCarriedAmmo(CarriedAmmo);
+	}
+
+	if (EquippedWeapon->EquipSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			this,
+			EquippedWeapon->EquipSound,
+			Character->GetActorLocation()
+		);
+	}
+	// 자동장전
+	// 처음 무기 먹었을때 무기의 총알이 비어있을 경우 장전
+	if (EquippedWeapon->IsAmmoEmpty())
+	{
+		Reload();
+	}
+
 	Character->GetCharacterMovement()->bOrientRotationToMovement = false;
 	Character->bUseControllerRotationYaw = true;
 }
 
+void UCombatComponent::Reload()
+{
+	// 클라이언트에 있는 경우 모든 클라이언트에게 다시 리로드 애니메이션을 재생할 시간임을 알리기 전에
+	// 서버가 다시 로드할 수 있는지 확인하도록 RPC를 서버로 보내야 한다.
+	// Ammo가 0개 이상이고, Cobat상태가 리로딩 중이 아닐때만 가능
+	if (CarriedAmmo > 0 && CombatState != ECombatState::ECS_Reloading)
+	{
+		ServerReload();
+	}
+
+}
+
+void UCombatComponent::FinishReloading()
+{
+	if (Character == nullptr)
+		return;
+	if (Character->HasAuthority())
+	{
+		CombatState = ECombatState::ECS_Unoccupied;
+
+		// 총알 업데이트
+		UpdateAmmoValues();
+	}
+	if (bFireButtonPressed)
+	{
+		Fire(); 
+	}
+}
+
+
+void UCombatComponent::ServerReload_Implementation()
+{
+	if (Character == nullptr || EquippedWeapon == nullptr)
+		return;
+
+	// CombatState상태를 변경하면 OnRep이 실행된다
+	CombatState = ECombatState::ECS_Reloading;
+	// 즉, 서버에서도 해당 함수를 호출하고 클라에서도 동일하게 호출해줘야함
+	HandleReload();
+}
+
+void UCombatComponent::OnRep_CombatState()
+{
+	switch (CombatState)
+	{
+	case ECombatState::ECS_Unoccupied:
+		// CobmatState상태가 변경되었는데 FireButton을 클릭하고 있다면 발사
+		if (bFireButtonPressed)
+		{
+			Fire();
+		}
+		break;
+	case ECombatState::ECS_Reloading:
+		// 클라에서도 해당 함수를 호출
+		HandleReload();
+		break;
+	case ECombatState::ECS_MAX:
+		break;
+	}
+}
+
+void UCombatComponent::UpdateAmmoValues()
+{
+	if (Character == nullptr || EquippedWeapon == nullptr)
+		return;
+
+	// 장전해야할 총알의 개수
+	int32 ReloadAmount = AmountToReload();
+
+	// 현재 들고있는 총알의 개수를 갱신
+	if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()))
+	{
+		// 기존에 들고있던 총알의 개수에서 장전해야할 총알의 개수를 빼준다
+		CarriedAmmoMap[EquippedWeapon->GetWeaponType()] -= ReloadAmount;
+		// 들고있는 탄약 복제
+		CarriedAmmo = CarriedAmmoMap[EquippedWeapon->GetWeaponType()];
+	}
+	Controller = Controller == nullptr ? Cast<ABlasterPlayerController>(Character->Controller) : Controller;
+
+	if (Controller)
+	{
+		Controller->SetHUDCarriedAmmo(CarriedAmmo);
+	}
+	// 무기의 총알 갱신
+	EquippedWeapon->AddAmmo(-ReloadAmount);
+}
+
+void UCombatComponent::HandleReload()
+{
+	Character->PlayReloadMontage();
+}
+
+int32 UCombatComponent::AmountToReload()
+{
+	if (EquippedWeapon == nullptr)
+		return 0;
+	// 현재 들고있는 총의 장전할 수 있는 총알의 개수
+	int32 RoomInMag = EquippedWeapon->GetMagCapacity() - EquippedWeapon->GetAmmo();
+
+	if (CarriedAmmoMap.Contains(EquippedWeapon->GetWeaponType()))
+	{
+		// 현재 들고있는 총알의 총 개수
+		int32 AmountCarried = CarriedAmmoMap[EquippedWeapon->GetWeaponType()];
+
+		// 최소값 (더 넘게 장전하지 않기 위해서)
+		// 들고있는 총알이 10개 보다 많아도 장전할수 있는 최대의 총알수가 10이면
+		// 총알은 10개를 장전해야한다.
+		// 그리고 들고있는 총알이 장전할 수 있는 최대의 총알수 10개보다 작다면
+		// 그대로 들고있는 총알의 개수만큼만 장전하는것이다.
+		int32 Least = FMath::Min(RoomInMag, AmountCarried);
+		return FMath::Clamp(RoomInMag, 0, Least);
+	}
+
+	return 0;
+}
