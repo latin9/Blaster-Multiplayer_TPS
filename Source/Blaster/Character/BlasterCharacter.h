@@ -71,10 +71,17 @@ protected:
 
 	// 관련된 모든 클래스에 대한 Poll, HUD에 유효한 데이터를 초기화 하는 함수
 	void PollInit();
+	
+
+	void RotateInPlace(float DeltaTime);
+public:
 
 protected:
 
 private:
+	UPROPERTY(Replicated)
+		bool bDisableGameplay = false;
+
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class USpringArmComponent* CameraBoom;
 
@@ -207,6 +214,9 @@ public:
 	FORCEINLINE float GetHealth() const{ return Health; }
 	FORCEINLINE float GetMaxHealth() const{ return MaxHealth; }
 	ECombatState GetCombatState() const;
+	FORCEINLINE void SetDisableGameplay(bool Enable) { bDisableGameplay = Enable; }
+	FORCEINLINE bool GetDisableGameplay() const { return bDisableGameplay; }
+	FORCEINLINE class UCombatComponent* GetCombatComponent() const { return Combat; }
 public:
 	UFUNCTION(Client, Reliable)
 	void ClientSetName(const FString& Name);

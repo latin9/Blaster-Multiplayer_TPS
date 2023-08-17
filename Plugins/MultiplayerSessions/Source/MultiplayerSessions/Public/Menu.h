@@ -22,7 +22,7 @@ public:
 protected:
 	virtual bool Initialize() override;
 	// 레벨이 세계에서 제거될 때 호출
-	virtual void OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld) override;
+	virtual void NativeDestruct() override;
 
 	// 멀티플레이 세션 서브 시스템에서의 사용자 지정 델리게이트를 위한 콜백
 	// DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam는 무조건 UFUNCTION으로 생성해야됨

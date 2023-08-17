@@ -76,6 +76,7 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	// .즉, OverlappingWeapon 속성은 ABlasterCharacter를 소유한 클라이언트에게만 복제될 것입니다.
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
 	DOREPLIFETIME(ABlasterCharacter, Health);
+	DOREPLIFETIME(ABlasterCharacter, bDisableGameplay);
 }
 
 void ABlasterCharacter::OnRep_ReplicatedMovement()
@@ -123,9 +124,10 @@ void ABlasterCharacter::MulticastElim_Implementation()
 	GetCharacterMovement()->DisableMovement();
 	GetCharacterMovement()->StopMovementImmediately();
 	// 입력 Disable
-	if (BlasterPlayerController)
+	bDisableGameplay = true;
+	if (Combat)
 	{
-		DisableInput(BlasterPlayerController);
+		Combat->FireButtonPressed(false); 
 	}
 	// Disalbe Collision
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -171,6 +173,16 @@ void ABlasterCharacter::Destroyed()
 		UE_LOG(LogTemp, Warning, TEXT("ElimBotComponent Start DestroyComponent"));
 		ElimBotComponent->DestroyComponent();
 	}
+	ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>(UGameplayStatics::GetGameMode(this));
+
+	// 죽었을때 무기를 제거하는 부분은 Cooldown이후 GameReset할때 처리하는 부분이라서
+	// InProgress 즉 게임이 진행중에는 죽어도 무기가 사라지면 안된다 그걸 방지하기 위한 bool값
+	bool bMatchNotInProgress = BlasterGameMode && BlasterGameMode->GetMatchState() != MatchState::InProgress;
+
+	if (Combat && Combat->EquippedWeapon && bMatchNotInProgress)
+	{
+		Combat->EquippedWeapon->Destroy();
+	}
 }
 
 void ABlasterCharacter::BeginPlay()
@@ -190,20 +202,7 @@ void ABlasterCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (GetLocalRole() > ENetRole::ROLE_SimulatedProxy && IsLocallyControlled())
-	{
-		AimOffset(DeltaTime);
-	}
-	else
-	{
-		TimeSinceLastMovementReplication += DeltaTime;
-
-		if (TimeSinceLastMovementReplication > 0.25f)
-		{
-			OnRep_ReplicatedMovement();
-		}
-		CalculateAO_Pitch();
-	}
+	RotateInPlace(DeltaTime);
 
 	HideCameraIfCharacterClose();
 	PollInit();
@@ -328,6 +327,9 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 
 void ABlasterCharacter::MoveForward(float Value)
 {
+	if (bDisableGameplay)
+		return;
+
 	if (Controller != nullptr && Value != 0.f)
 	{
 		const FRotator YawRotation(0.0, Controller->GetControlRotation().Yaw, 0.0);
@@ -339,6 +341,9 @@ void ABlasterCharacter::MoveForward(float Value)
 
 void ABlasterCharacter::MoveRight(float Value)
 {
+	if (bDisableGameplay)
+		return;
+
 	if (Controller != nullptr && Value != 0.f)
 	{
 		const FRotator YawRotation(0.0, Controller->GetControlRotation().Yaw, 0.0);
@@ -360,6 +365,9 @@ void ABlasterCharacter::LookUp(float Value)
 
 void ABlasterCharacter::EquipButtonPressed()
 {
+	if (bDisableGameplay)
+		return;
+
 	// 무기 장착은 서버가 해야 한다
 	// 서버에 권한이 있음
 	// HasAuthority = 서버만 호출 가능
@@ -389,6 +397,9 @@ void ABlasterCharacter::ServerEquipButtonPressed_Implementation()
 
 void ABlasterCharacter::CrouchButtonPressed()
 {
+	if (bDisableGameplay)
+		return;
+
 	if (bIsCrouched)
 	{
 		UnCrouch();
@@ -401,6 +412,9 @@ void ABlasterCharacter::CrouchButtonPressed()
 
 void ABlasterCharacter::ReloadButtonPressed()
 {
+	if (bDisableGameplay)
+		return;
+
 	// R키를 누름과 동시에 모든 시스템(서버, 클라이언트)에서 해당 함수가 호출이 된다.
 	// 따라서 서버에서만 리로드 하는것이 적절한지 확인하기 위해 유효성 검사를 수행한다.
 	if (Combat)
@@ -411,6 +425,9 @@ void ABlasterCharacter::ReloadButtonPressed()
 
 void ABlasterCharacter::AimButtonPressed()
 {
+	if (bDisableGameplay)
+		return;
+
 	if (Combat)
 	{
 		Combat->SetAiming(true);
@@ -419,6 +436,9 @@ void ABlasterCharacter::AimButtonPressed()
 
 void ABlasterCharacter::AimButtonReleased()
 {
+	if (bDisableGameplay)
+		return;
+
 	if (Combat)
 	{
 		Combat->SetAiming(false);
@@ -531,6 +551,9 @@ void ABlasterCharacter::SimproxiesTurn()
 
 void ABlasterCharacter::Jump()
 {
+	if (bDisableGameplay)
+		return;
+
 	// 스페이스바를 눌렀는데 앉아있는 상태라면 일어서고
 	if (bIsCrouched)
 	{
@@ -545,6 +568,9 @@ void ABlasterCharacter::Jump()
 
 void ABlasterCharacter::FireButtonPressed()
 {
+	if (bDisableGameplay)
+		return;
+
 	// 컴뱃에 좌클릭 클릭했다 전달
 	if (Combat)
 	{
@@ -554,6 +580,9 @@ void ABlasterCharacter::FireButtonPressed()
 
 void ABlasterCharacter::FireButtonReleased()
 {
+	if (bDisableGameplay)
+		return;
+
 	if (Combat)
 	{
 		Combat->FireButtonPressed(false);
@@ -642,6 +671,30 @@ void ABlasterCharacter::PollInit()
 			BlasterPlayerState->AddToScore(0.f);
 			BlasterPlayerState->AddToDefeats(0);
 		}
+	}
+}
+
+void ABlasterCharacter::RotateInPlace(float DeltaTime)
+{
+	if (bDisableGameplay)
+	{
+		bUseControllerRotationYaw = false;
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+		return;
+	}
+	if (GetLocalRole() > ENetRole::ROLE_SimulatedProxy && IsLocallyControlled())
+	{
+		AimOffset(DeltaTime);
+	}
+	else
+	{
+		TimeSinceLastMovementReplication += DeltaTime;
+
+		if (TimeSinceLastMovementReplication > 0.25f)
+		{
+			OnRep_ReplicatedMovement();
+		}
+		CalculateAO_Pitch();
 	}
 }
 

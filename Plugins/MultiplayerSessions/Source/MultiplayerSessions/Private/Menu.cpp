@@ -69,12 +69,12 @@ bool UMenu::Initialize()
 	return true;
 }
 
-void UMenu::OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld)
+void UMenu::NativeDestruct()
 {
 	// 먼저 호출하는 이유는 제거되기 전에 미리 설정을 해야하기 때문
 	MenuTearDown();
 
-	Super::OnLevelRemovedFromWorld(InLevel, InWorld);
+	Super::NativeDestruct();
 }
 
 void UMenu::OnCreateSession(bool bWasSuccessful)

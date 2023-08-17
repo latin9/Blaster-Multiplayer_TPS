@@ -11,11 +11,17 @@ struct FHUDPackage
 {
 	GENERATED_BODY()
 public:
+	UPROPERTY()
 	class UTexture2D* CrosshairCenter;
+	UPROPERTY()
 	class UTexture2D* CrosshairLeft;
+	UPROPERTY()
 	class UTexture2D* CrosshairRight;
+	UPROPERTY()
 	class UTexture2D* CrosshairTop;
+	UPROPERTY()
 	class UTexture2D* CrosshairBottom;
+	UPROPERTY()
 	float CrosshairSpread;	// 십자선을 얼마나 벌려야 하는지 알려주는 값(이동하거나 그럴떄)
 	FLinearColor CrosshairsColor;
 };
@@ -31,16 +37,18 @@ class BLASTER_API ABlasterHUD : public AHUD
 
 protected:
 	virtual void BeginPlay() override;
-	void AddCharacterOverlay();
 
 public:
 	virtual void DrawHUD() override;
+	void AddCharacterOverlay();
+	void AddAnnouncement();
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Player Stats")
 	TSubclassOf<class UUserWidget> CharacterOverlayClass;
 
-	
+	UPROPERTY(EditAnywhere, Category = "AnnouncementClass")
+	TSubclassOf<class UUserWidget> AnnouncementClass;
 private:
 	FHUDPackage HUDPackage;
 
@@ -48,9 +56,14 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	float CrosshairSpreadMax = 16.f;
-
+	
+	UPROPERTY()
 	class UCharacterOverlay* CharacterOverlay;
+	
+	UPROPERTY()
+	class UAnnouncement* Announcement;
 public:
 	FORCEINLINE void SetHUDPackage(const FHUDPackage& Package) { HUDPackage = Package; }
 	FORCEINLINE UCharacterOverlay* GetCharacterOverlay() const { return CharacterOverlay; }
+	FORCEINLINE UAnnouncement* GetAnnouncement() const { return Announcement; }
 };

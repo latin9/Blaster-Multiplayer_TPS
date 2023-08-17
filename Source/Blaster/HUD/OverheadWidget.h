@@ -30,6 +30,6 @@ public:
 protected:
 	// 다른 레벨로 넘어가거나 현재 레벨을 떠날 때 호출됨
 	// 뷰포트에서 해당 위젯을 제거할 수 있다.
-	virtual void OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld) override;
+	virtual void NativeDestruct() override;
 	
 };

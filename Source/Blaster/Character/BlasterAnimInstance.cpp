@@ -94,8 +94,8 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 
 		// 리로딩할때는 FABRIK을 사용하면 안된다
 		bUseFABRIK = BlasterCharacter->GetCombatState() != ECombatState::ECS_Reloading;
-		bUseAimOffsets = BlasterCharacter->GetCombatState() != ECombatState::ECS_Reloading;
-		bTransformRightHand = BlasterCharacter->GetCombatState() != ECombatState::ECS_Reloading;
+		bUseAimOffsets = BlasterCharacter->GetCombatState() != ECombatState::ECS_Reloading && !BlasterCharacter->GetDisableGameplay();
+		bTransformRightHand = BlasterCharacter->GetCombatState() != ECombatState::ECS_Reloading && !BlasterCharacter->GetDisableGameplay();
 
 		//FTransform MuzzleTipTransform = EquippedWeapon->GetWeaponMesh()->GetSocketTransform(FName("MuzzleFlash"), ERelativeTransformSpace::RTS_World);
 		//// 총구 머즐소켓의 X충 방향의 FVector값
