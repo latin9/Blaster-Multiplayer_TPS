@@ -137,6 +137,9 @@ private:
 	UPROPERTY(EditAnywhere)
 	int32 StartingARAmmo = 30;
 
+	UPROPERTY(EditAnywhere)
+	int32 StartingRocketAmmo = 4;
+
 	void InitializeCarriedAmmo();
 
 	// 모든 클라이언트는 전투 상태를 알아야한다

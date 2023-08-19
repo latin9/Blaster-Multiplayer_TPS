@@ -243,7 +243,8 @@ void ABlasterPlayerController::HandleMatchHasStarted()
 			BlasterHUD->GetAnnouncement()->SetVisibility(ESlateVisibility::Hidden);
 		}
 
-		BlasterHUD->AddCharacterOverlay();
+		if (BlasterHUD->GetCharacterOverlay() == nullptr)
+			BlasterHUD->AddCharacterOverlay();
 	}
 }
 
