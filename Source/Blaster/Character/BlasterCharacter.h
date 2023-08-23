@@ -24,6 +24,7 @@ public:
 	void PlayFireMontage(bool bAiming);
 	void PlayReloadMontage();
 	void PlayElimMontage();
+	void PlayThrowGrenadeMontage();
 	// 시뮬레이션 프록시에 대한 캐릭터 회전의 델타를 확인할 때 틱 기능 대신 이것을 사용
 	virtual void OnRep_ReplicatedMovement() override;
 
@@ -43,6 +44,10 @@ public:
 
 	virtual void Destroyed() override;
 
+	// BlueprintImplementableEvent : 블루프린트에서 구현할 수 있음
+	UFUNCTION(BlueprintImplementableEvent)
+	void ShowSniperScopeWidget(bool bShowScope);
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -54,6 +59,7 @@ protected:
 	void EquipButtonPressed();
 	void CrouchButtonPressed();
 	void ReloadButtonPressed();
+	void GrenadeButtonPressed();
 	void AimButtonPressed();
 	void AimButtonReleased();
 	float CalculateSpeed();
@@ -72,7 +78,6 @@ protected:
 	// 관련된 모든 클래스에 대한 Poll, HUD에 유효한 데이터를 초기화 하는 함수
 	void PollInit();
 	
-
 	void RotateInPlace(float DeltaTime);
 public:
 
@@ -130,6 +135,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Combat)
 	class UAnimMontage* ElimMontage;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+	class UAnimMontage* ThrowGrenadeMontage;
 
 	void HideCameraIfCharacterClose();
 	UPROPERTY(EditAnywhere)
@@ -217,6 +225,7 @@ public:
 	FORCEINLINE void SetDisableGameplay(bool Enable) { bDisableGameplay = Enable; }
 	FORCEINLINE bool GetDisableGameplay() const { return bDisableGameplay; }
 	FORCEINLINE class UCombatComponent* GetCombatComponent() const { return Combat; }
+	FORCEINLINE UAnimMontage* GetReloadMontage() const { return ReloadMontage; }
 public:
 	UFUNCTION(Client, Reliable)
 	void ClientSetName(const FString& Name);

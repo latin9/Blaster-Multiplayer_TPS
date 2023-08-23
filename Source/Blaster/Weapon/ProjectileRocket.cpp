@@ -12,9 +12,9 @@
 
 AProjectileRocket::AProjectileRocket()
 {
-	RocketMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RocketMesh"));
-	RocketMesh->SetupAttachment(RootComponent);
-	RocketMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ProjectileMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("RocketMesh"));
+	ProjectileMesh->SetupAttachment(RootComponent);
+	ProjectileMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	RocketMovementComponent = CreateDefaultSubobject<URocketMovementComponent>(TEXT("RocketMovementComponent"));
 	// 총알이 속도에 맞춰서 회전
@@ -32,18 +32,7 @@ void AProjectileRocket::BeginPlay()
 		CollisionBox->OnComponentHit.AddDynamic(this, &AProjectileRocket::OnHit);
 	}
 
-	if (TrailSystem)
-	{
-		TrailSystemComponent = UNiagaraFunctionLibrary::SpawnSystemAttached(
-			TrailSystem,
-			GetRootComponent(),
-			FName(),
-			GetActorLocation(),
-			GetActorRotation(),
-			EAttachLocation::KeepWorldPosition,
-			false
-		);
-	}
+	SpawnTrailSystem();
 
 	if (ProjectileLoop && LoopingSoundAttenuation)
 	{
@@ -69,38 +58,12 @@ void AProjectileRocket::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, 
 {
 	if (OtherActor == GetOwner())
 	{
-
 		return;
 	}
 
-	// 부모에서 파괴되기 때문에 먼저 처리를 해야한다.
-	APawn* FiringPawn = GetInstigator();
-	if (FiringPawn)
-	{
-		AController* FiringController = FiringPawn->GetController();
-		if (FiringController && HasAuthority())
-		{
-			UGameplayStatics::ApplyRadialDamageWithFalloff(
-				this,		 // 월드 콘텍스트 오브젝트
-				Damage,			 // 베이스 데미지
-				10.f,		 // 최소 데미지
-				GetActorLocation(),// 위치
-				200.f,	// 내부 범위
-				500.f,	// 외부 범위
-				1.f,			// 손상낙하?
-				UDamageType::StaticClass(),	// 데미지 타입 클래스
-				TArray<AActor*>(),		// IgnoreActor
-				this,					// 데미지 원인이 되는 액터
-				FiringController		// 선동자 컨트롤러 게임 모드에 정보를 전달하면서 컨트롤러에 접근 가능?
-			);
-		}
-	}
-	GetWorldTimerManager().SetTimer(
-		DestroyTimer,
-		this,
-		&AProjectileRocket::DestroyTimerFinished,
-		DestroyTime
-	);
+	ExplodeDamage();
+
+	StartDestroyTimer();
 
 	if (ImpactParticles)
 	{
@@ -111,9 +74,9 @@ void AProjectileRocket::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, 
 		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
 	}
 
-	if (RocketMesh)
+	if (ProjectileMesh)
 	{
-		RocketMesh->SetVisibility(false);
+		ProjectileMesh->SetVisibility(false);
 	}
 	if (CollisionBox)
 	{
@@ -128,11 +91,6 @@ void AProjectileRocket::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, 
 		ProjectileLoopComponent->Stop();
 	}
 	//Super::OnHit(HitComp, OtherActor, OtherComp, NormalImpulse, Hit);
-}
-
-void AProjectileRocket::DestroyTimerFinished()
-{
-	Destroy();
 }
 
 void AProjectileRocket::Destroyed()

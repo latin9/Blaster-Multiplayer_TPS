@@ -8,6 +8,8 @@
 #include "Sound/SoundCue.h"
 #include "../Character/BlasterCharacter.h"
 #include "../Blaster.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
 
 AProjectile::AProjectile()
 {
@@ -65,6 +67,64 @@ void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimi
 	ServerDestroyFunc();
 
 	Destroy();
+}
+
+void AProjectile::SpawnTrailSystem()
+{
+	if (TrailSystem)
+	{
+		TrailSystemComponent = UNiagaraFunctionLibrary::SpawnSystemAttached(
+			TrailSystem,
+			GetRootComponent(),
+			FName(),
+			GetActorLocation(),
+			GetActorRotation(),
+			EAttachLocation::KeepWorldPosition,
+			false
+		);
+	}
+}
+
+void AProjectile::StartDestroyTimer()
+{
+	GetWorldTimerManager().SetTimer(
+		DestroyTimer,
+		this,
+		&AProjectile::DestroyTimerFinished,
+		DestroyTime
+	);
+}
+
+void AProjectile::DestroyTimerFinished()
+{
+	ServerDestroyFunc();
+	Destroy();
+}
+
+void AProjectile::ExplodeDamage()
+{
+	// 부모에서 파괴되기 때문에 먼저 처리를 해야한다.
+	APawn* FiringPawn = GetInstigator();
+	if (FiringPawn)
+	{
+		AController* FiringController = FiringPawn->GetController();
+		if (FiringController && HasAuthority())
+		{
+			UGameplayStatics::ApplyRadialDamageWithFalloff(
+				this,		 // 월드 콘텍스트 오브젝트
+				Damage,			 // 베이스 데미지
+				10.f,		 // 최소 데미지
+				GetActorLocation(),// 위치
+				DamageInnerRadius,	// 내부 범위
+				DamageOuterRadius,	// 외부 범위
+				1.f,			// 손상낙하?
+				UDamageType::StaticClass(),	// 데미지 타입 클래스
+				TArray<AActor*>(),		// IgnoreActor
+				this,					// 데미지 원인이 되는 액터
+				FiringController		// 선동자 컨트롤러 게임 모드에 정보를 전달하면서 컨트롤러에 접근 가능?
+			);
+		}
+	}
 }
 
 void AProjectile::Tick(float DeltaTime)

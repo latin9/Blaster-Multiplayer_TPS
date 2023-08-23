@@ -30,6 +30,14 @@ public:
 
 	void FireButtonPressed(bool bPressed);
 
+	UFUNCTION(BlueprintCallable)
+	void ShotgunShellReload();
+
+	void JumpToShotgunEnd();
+
+	UFUNCTION(BlueprintCallable)
+	void ThrowGrenadeFinished();
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -61,6 +69,18 @@ protected:
 	void HandleReload();
 	
 	int32 AmountToReload();
+
+	void ThrowGrenade();
+
+	UFUNCTION(Server, Reliable)
+	void ServerThrowGrenad();
+
+	void DropEquippedWeapon();
+	void AttachActorToRightHand(AActor* ActorToAttach);
+	void AttachActorToLeftHand(AActor* ActorToAttach);
+	void UpdateCarriedAmmo();
+	void PlayEquipWeaponSound();
+	void ReloadEmptyWeapon();
 
 private:
 	UPROPERTY()
@@ -148,6 +168,12 @@ private:
 	UPROPERTY(EditAnywhere)
 	int32 StartingShotgunAmmo = 20;
 
+	UPROPERTY(EditAnywhere)
+	int32 StartingSniperAmmo = 10;
+
+	UPROPERTY(EditAnywhere)
+	int32 StartingGrenadeLauncherAmmo = 5;
+
 	void InitializeCarriedAmmo();
 
 	// 모든 클라이언트는 전투 상태를 알아야한다
@@ -158,6 +184,7 @@ private:
 	void OnRep_CombatState();
 
 	void UpdateAmmoValues();
+	void UpdateShotgunAmmoValues();
 
 public:	
 
