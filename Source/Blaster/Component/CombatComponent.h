@@ -20,6 +20,10 @@ class BLASTER_API UCombatComponent : public UActorComponent
 public:	
 	UCombatComponent();
 
+protected:
+	virtual void BeginPlay() override;
+
+public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
@@ -38,9 +42,16 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ThrowGrenadeFinished();
 
-protected:
-	virtual void BeginPlay() override;
+	UFUNCTION(BlueprintCallable)
+	void LaunchGrenade();
 
+	UFUNCTION(Server, Reliable)
+	void ServerLaunchGrenade(const FVector_NetQuantize& Target);
+
+	// PickupAmmo를 먹을 경우 보유 총알 개수가 증가함
+	void PickupAmmo(EWeaponType WeaponType, int32 AmmoAmount);
+
+protected:
 	void SetAiming(bool bIsAiming);
 
 	UFUNCTION(Server, Reliable)
@@ -75,12 +86,16 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void ServerThrowGrenad();
 
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class AProjectile> GrenadeClass;
+
 	void DropEquippedWeapon();
 	void AttachActorToRightHand(AActor* ActorToAttach);
 	void AttachActorToLeftHand(AActor* ActorToAttach);
 	void UpdateCarriedAmmo();
 	void PlayEquipWeaponSound();
 	void ReloadEmptyWeapon();
+	void ShowAttachedGrenade(bool bShowGrenade);
 
 private:
 	UPROPERTY()
@@ -149,6 +164,9 @@ private:
 	UFUNCTION()
 	void OnRep_CarriedAmmo();
 
+	UPROPERTY(EditAnywhere)
+	int32 MaxCarriedAmmo = 500;
+
 	// TMap은 복제가 안된다
 	TMap<EWeaponType, int32> CarriedAmmoMap;
 
@@ -186,7 +204,19 @@ private:
 	void UpdateAmmoValues();
 	void UpdateShotgunAmmoValues();
 
-public:	
 
+	UPROPERTY(ReplicatedUsing = OnRep_Grenades)
+	int32 Grenades = 4;
+	
+	UFUNCTION()
+	void OnRep_Grenades();
+
+	UPROPERTY(EditAnywhere)
+	int32 MaxGrenades = 4;
+
+	void UpdateHUDGrenades();
+
+public:	
+	FORCEINLINE int32 GetGrenades() const { return Grenades; }
 		
 };

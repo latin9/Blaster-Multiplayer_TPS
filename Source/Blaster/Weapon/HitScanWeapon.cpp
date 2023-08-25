@@ -38,6 +38,36 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 		WeaponTraceHit(Start, HitTarget, FireHit);
 		ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(FireHit.GetActor());
 
+		// 애니메이션이 없는 무기일 경우
+		// MuzzleFlash를 갖고있다면 Fire Animation이 없다는 의미(애님 없는 무기만 설정해줌)
+		if (MuzzleFlash)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(
+				GetWorld(),
+				MuzzleFlash,
+				SocketTrnasform
+			);
+		}
+		// 여기도 마찬가지
+		if (FireSound)
+		{
+			/*UGameplayStatics::PlaySoundAtLocation(
+				this,
+				FireSound,
+				GetActorLocation()
+			);*/
+			UGameplayStatics::SpawnSoundAttached(
+				FireSound,
+				RootComponent,
+				FName(),
+				FVector(ForceInit),
+				EAttachLocation::SnapToTarget
+			);
+		}
+
+		if (!FireHit.bBlockingHit)
+			return;
+
 		// 타깃 액터에게 데미지 줌
 		// 데미지는 서버에서만 발생해야함
 		if (BlasterCharacter && HasAuthority() && InstigatorController)
@@ -68,27 +98,14 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 				HitSound,
 				FireHit.ImpactPoint
 			);
+			/*UGameplayStatics::SpawnSoundAttached(
+				HitSound,
+				RootComponent,
+				FName(),
+				FireHit.ImpactPoint,
+				EAttachLocation::SnapToTarget
+			);*/
 		}
-
-		// 애니메이션이 없는 무기일 경우
-		// MuzzleFlash를 갖고있다면 Fire Animation이 없다는 의미(애님 없는 무기만 설정해줌)
-		if (MuzzleFlash)
-		{
-			UGameplayStatics::SpawnEmitterAtLocation(
-				GetWorld(),
-				MuzzleFlash,
-				SocketTrnasform
-			);
-		}
-		// 여기도 마찬가지
-		if (FireSound)
-		{
-			UGameplayStatics::PlaySoundAtLocation(
-				this,
-				FireSound,
-				GetActorLocation()
-			);
-  		}
 	}
 }
 

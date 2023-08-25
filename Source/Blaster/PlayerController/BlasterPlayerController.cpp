@@ -162,6 +162,24 @@ void ABlasterPlayerController::SetHUDAnnouncementCountdown(float CountdownTime)
 	}
 }
 
+void ABlasterPlayerController::SetHUDGrenades(int32 Grenades)
+{
+	BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
+
+	bool bHUDValid = BlasterHUD &&
+		BlasterHUD->GetCharacterOverlay() &&
+		BlasterHUD->GetCharacterOverlay()->GrenadeText;
+	if (bHUDValid)
+	{
+		FString GrenadeText = FString::Printf(TEXT("%d"), Grenades);
+		BlasterHUD->GetCharacterOverlay()->GrenadeText->SetText(FText::FromString(GrenadeText));
+	}
+	else
+	{
+		HUDGrenades = Grenades;
+	}
+}
+
 void ABlasterPlayerController::OnMatchStateSet(FName State)
 {
 	MatchState = State;
@@ -392,6 +410,11 @@ void ABlasterPlayerController::PollInit()
 				SetHUDHealth(HUDHealth, HUDMaxHealth);
 				SetHUDScore(HUDScore);
 				SetHUDDefeats(HUDDefeats);
+				ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(GetPawn());
+				if (BlasterCharacter && BlasterCharacter->GetCombatComponent())
+				{
+					SetHUDGrenades(BlasterCharacter->GetCombatComponent()->GetGrenades());
+				}
 			}
 		}
 	}

@@ -48,6 +48,8 @@ public:
 	UFUNCTION(BlueprintImplementableEvent)
 	void ShowSniperScopeWidget(bool bShowScope);
 
+	void UpdateHUDHealth();
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -73,7 +75,6 @@ protected:
 	
 	UFUNCTION()
 	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
-	void UpdateHUDHealth();
 
 	// 관련된 모든 클래스에 대한 Poll, HUD에 유효한 데이터를 초기화 하는 함수
 	void PollInit();
@@ -109,6 +110,10 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* Combat;
+	
+
+	UPROPERTY(VisibleAnywhere)
+	class UBuffComponent* Buff;
 
 	// 서버 RPC를 신뢰할 수 있도록 Reliable 선언
 	UFUNCTION(Server, Reliable)
@@ -159,7 +164,7 @@ private:
 	float Health = 100.f;
 
 	UFUNCTION()
-	void OnRep_Health();
+	void OnRep_Health(float LastHealth);
 
 	UPROPERTY()
 	class ABlasterPlayerController* BlasterPlayerController;
@@ -206,6 +211,9 @@ private:
 	UPROPERTY()
 	class ABlasterPlayerState* BlasterPlayerState;
 
+	// 수류탄 관련
+	UPROPERTY(VisibleAnywhere)
+	class UStaticMeshComponent* AttachedGrenade;
 
 public:
 	void SetOverlappingWeapon(AWeapon* Weapon);
@@ -220,13 +228,16 @@ public:
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
 	FORCEINLINE bool IsElimmed() const { return bElimmed; }
 	FORCEINLINE float GetHealth() const{ return Health; }
+	FORCEINLINE void SetHealth(float Amount) {Health = Amount; }
 	FORCEINLINE float GetMaxHealth() const{ return MaxHealth; }
 	ECombatState GetCombatState() const;
 	FORCEINLINE void SetDisableGameplay(bool Enable) { bDisableGameplay = Enable; }
 	FORCEINLINE bool GetDisableGameplay() const { return bDisableGameplay; }
 	FORCEINLINE class UCombatComponent* GetCombatComponent() const { return Combat; }
 	FORCEINLINE UAnimMontage* GetReloadMontage() const { return ReloadMontage; }
-public:
+	FORCEINLINE class UStaticMeshComponent* GetAttachedGrenade() const { return AttachedGrenade; }
+	FORCEINLINE class UBuffComponent* GetBuffComponent() const { return Buff; }
+public: 
 	UFUNCTION(Client, Reliable)
 	void ClientSetName(const FString& Name);
 

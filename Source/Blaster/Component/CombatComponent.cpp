@@ -15,6 +15,7 @@
 #include "TimerManager.h"
 #include "Sound/SoundCue.h"
 #include "../Character/BlasterAnimInstance.h"
+#include "../Weapon/Projectile.h"
 
 UCombatComponent::UCombatComponent()	:
 	bCanFire(true)
@@ -61,6 +62,22 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 		SetHUDCrosshairs(DeltaTime);
 		InterpFOV(DeltaTime);
+	}
+}
+
+void UCombatComponent::PickupAmmo(EWeaponType WeaponType, int32 AmmoAmount)
+{
+	// 매개변수로 들어온 무기 타입이 있다면 해당 무기타입의 휴대하고 있는 총알의 개수를 증가시킨다.
+	if (CarriedAmmoMap.Contains(WeaponType))
+	{
+		CarriedAmmoMap[WeaponType] = FMath::Clamp(CarriedAmmoMap[WeaponType] + AmmoAmount, 0, MaxCarriedAmmo);
+
+		// 현재 들고있는 무기의 탄약일 경우 HUD를 업데이트 해야한다.
+		UpdateCarriedAmmo();
+	}
+	if (EquippedWeapon && EquippedWeapon->IsAmmoEmpty() && EquippedWeapon->GetWeaponType() == WeaponType)
+	{
+		Reload();
 	}
 }
 
@@ -145,6 +162,42 @@ void UCombatComponent::ThrowGrenadeFinished()
 {
 	CombatState = ECombatState::ECS_Unoccupied;
 	AttachActorToRightHand(EquippedWeapon);
+}
+
+void UCombatComponent::LaunchGrenade()
+{
+	ShowAttachedGrenade(false);
+
+	// HitTarget을 틱에서 IsLocallyController()일경우에만 구하고 있기때문에
+	// 여기서도 마찬가지로 로컬플레이어일때만 실행하고 ServerRPC를 실행한다.
+	if (Character && Character->IsLocallyControlled())
+	{
+		ServerLaunchGrenade(HitTarget);
+	}
+}
+
+void UCombatComponent::ServerLaunchGrenade_Implementation(const FVector_NetQuantize& Target)
+{
+	if (Character && GrenadeClass && Character->GetAttachedGrenade())
+	{
+		const FVector StartingLocation = Character->GetAttachedGrenade()->GetComponentLocation();
+
+		FVector ToTarget = Target - StartingLocation;
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.Owner = Character;
+		// 누가 대미지를 입혔는가 = Instigator
+		SpawnParams.Instigator = Character;
+		UWorld* World = GetWorld();
+		if (World)
+		{
+			World->SpawnActor<AProjectile>(
+				GrenadeClass,
+				StartingLocation,
+				ToTarget.Rotation(),
+				SpawnParams
+				);
+		}
+	}
 }
 
 void UCombatComponent::Fire()
@@ -454,6 +507,7 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	// 서버는 CarriedAmmo를 다른 클라이언트에게 복제하지 않고 소유하는 클라이언트만 복제한다.
 	DOREPLIFETIME_CONDITION(UCombatComponent, CarriedAmmo, COND_OwnerOnly);
 	DOREPLIFETIME(UCombatComponent, CombatState);
+	DOREPLIFETIME(UCombatComponent, Grenades);
 }
 
 
@@ -494,7 +548,7 @@ void UCombatComponent::Reload()
 	// 클라이언트에 있는 경우 모든 클라이언트에게 다시 리로드 애니메이션을 재생할 시간임을 알리기 전에
 	// 서버가 다시 로드할 수 있는지 확인하도록 RPC를 서버로 보내야 한다.
 	// Ammo가 0개 이상이고, Cobat상태가 ECS_Unoccupied일때만 가능
-	if (CarriedAmmo > 0 && CombatState == ECombatState::ECS_Unoccupied)
+	if (CarriedAmmo > 0 && CombatState == ECombatState::ECS_Unoccupied && EquippedWeapon && !EquippedWeapon->IsAmmoFull())
 	{
 		ServerReload();
 	}
@@ -551,6 +605,7 @@ void UCombatComponent::OnRep_CombatState()
 		{
 			Character->PlayThrowGrenadeMontage();
 			AttachActorToLeftHand(EquippedWeapon);
+			ShowAttachedGrenade(true);
 		}
 		break;
 	case ECombatState::ECS_MAX:
@@ -616,6 +671,21 @@ void UCombatComponent::UpdateShotgunAmmoValues()
 	}
 }
 
+void UCombatComponent::OnRep_Grenades()
+{
+	UpdateHUDGrenades();
+}
+
+void UCombatComponent::UpdateHUDGrenades()
+{
+	// 컨트롤러 지정
+	Controller = Controller == nullptr ? Cast<ABlasterPlayerController>(Character->Controller) : Controller;
+	if (Controller)
+	{
+		Controller->SetHUDGrenades(Grenades);
+	}
+}
+
 void UCombatComponent::HandleReload()
 {
 	Character->PlayReloadMontage();
@@ -647,7 +717,10 @@ int32 UCombatComponent::AmountToReload()
 
 void UCombatComponent::ThrowGrenade()
 {
-	if (CombatState != ECombatState::ECS_Unoccupied)
+	if (Grenades == 0)
+		return;
+
+	if (CombatState != ECombatState::ECS_Unoccupied || EquippedWeapon == nullptr)
 		return;
 
 	CombatState = ECombatState::ECS_ThrowingGrenade;
@@ -656,23 +729,35 @@ void UCombatComponent::ThrowGrenade()
 	{
 		Character->PlayThrowGrenadeMontage();
 		AttachActorToLeftHand(EquippedWeapon);
+		ShowAttachedGrenade(true);
 	}
 
 	if (Character && !Character->HasAuthority())
 	{
 		ServerThrowGrenad();
 	}
+	if (Character && Character->HasAuthority())
+	{
+		Grenades = FMath::Clamp(Grenades - 1, 0, MaxGrenades);
+		UpdateHUDGrenades();
+	}
 }
 
 void UCombatComponent::ServerThrowGrenad_Implementation()
 {
+	if (Grenades == 0)
+		return;
 	CombatState = ECombatState::ECS_ThrowingGrenade;
 
 	if (Character)
 	{
 		Character->PlayThrowGrenadeMontage();
 		AttachActorToLeftHand(EquippedWeapon);
+		ShowAttachedGrenade(true);
 	}
+
+	Grenades = FMath::Clamp(Grenades - 1, 0, MaxGrenades);
+	UpdateHUDGrenades();
 }
 
 
@@ -763,5 +848,13 @@ void UCombatComponent::ReloadEmptyWeapon()
 	if (EquippedWeapon && EquippedWeapon->IsAmmoEmpty())
 	{
 		Reload();
+	}
+}
+
+void UCombatComponent::ShowAttachedGrenade(bool bShowGrenade)
+{
+	if (Character && Character->GetAttachedGrenade())
+	{
+		Character->GetAttachedGrenade()->SetVisibility(bShowGrenade);
 	}
 }
