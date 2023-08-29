@@ -121,9 +121,21 @@ void UCombatComponent::OnRep_EquippedWeapon()
 		AttachActorToRightHand(EquippedWeapon);
 		Character->GetCharacterMovement()->bOrientRotationToMovement = false;
 		Character->bUseControllerRotationYaw = true;
+		// 클라에서도 장착 사운드를 실행해주어야 서버, 클라 전부 들린다.
+		PlayEquipWeaponSound(EquippedWeapon);
+		EquippedWeapon->SetHUDAmmo();
+	}
+}
+
+void UCombatComponent::OnRep_SecondaryWeapon()
+{
+	if (SecondaryWeapon && Character)
+	{
+		SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
+		AttachActorToBackpack(SecondaryWeapon);
 
 		// 클라에서도 장착 사운드를 실행해주어야 서버, 클라 전부 들린다.
-		PlayEquipWeaponSound();
+		PlayEquipWeaponSound(SecondaryWeapon);
 	}
 }
 
@@ -199,6 +211,7 @@ void UCombatComponent::ServerLaunchGrenade_Implementation(const FVector_NetQuant
 		}
 	}
 }
+
 
 void UCombatComponent::Fire()
 {
@@ -501,6 +514,7 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
+	DOREPLIFETIME(UCombatComponent, SecondaryWeapon);
 	DOREPLIFETIME(UCombatComponent, bAiming);
 	// 갖고있는 탄약은 오로지 소유 클라이언트에서만 사용하기 때문(리로딩) 
 	// 이렇게 해야 송신되는 데이터를 최소화하면서 성능 향상이 있다.
@@ -522,10 +536,41 @@ void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 	if (CombatState != ECombatState::ECS_Unoccupied)
 		return;
 
+	if (EquippedWeapon != nullptr && SecondaryWeapon == nullptr)
+	{
+		EquipSecondaryWeapon(WeaponToEquip);
+	}
+	else
+	{
+		EquipPrimaryWeapon(WeaponToEquip);
+	}
+
+	
+	Character->GetCharacterMovement()->bOrientRotationToMovement = false;
+	Character->bUseControllerRotationYaw = true;
+}
+
+void UCombatComponent::SwapWeapons()
+{
+	AWeapon* TempWeapon = EquippedWeapon;
+	EquippedWeapon = SecondaryWeapon;
+	SecondaryWeapon = TempWeapon;
+
+	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+	AttachActorToRightHand(EquippedWeapon);
+	EquippedWeapon->SetHUDAmmo();
+	UpdateCarriedAmmo();
+	PlayEquipWeaponSound(EquippedWeapon);
+
+	SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
+	AttachActorToBackpack(SecondaryWeapon);
+}
+
+void UCombatComponent::EquipPrimaryWeapon(AWeapon* WeaponToEquip)
+{
 	DropEquippedWeapon();
 	EquippedWeapon = WeaponToEquip;
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
-
 	AttachActorToRightHand(EquippedWeapon);
 	// 무기의 소유자를 지정해줘야함
 	EquippedWeapon->SetOwner(Character);
@@ -535,13 +580,19 @@ void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 	// CarriedAmmo를 설정하는 즉시 클라이언트의 HUD를
 	// Controller->SetHUDCarriedAmmo(CarriedAmmo);를 통해 업데이트 할 수 있다.
 	UpdateCarriedAmmo();
-	PlayEquipWeaponSound();
-	
+	PlayEquipWeaponSound(WeaponToEquip);
 	ReloadEmptyWeapon();
-
-	Character->GetCharacterMovement()->bOrientRotationToMovement = false;
-	Character->bUseControllerRotationYaw = true;
 }
+
+void UCombatComponent::EquipSecondaryWeapon(AWeapon* WeaponToEquip)
+{
+	SecondaryWeapon = WeaponToEquip;
+	SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
+	AttachActorToBackpack(WeaponToEquip);
+	SecondaryWeapon->SetOwner(Character);
+	PlayEquipWeaponSound(WeaponToEquip);
+}
+
 
 void UCombatComponent::Reload()
 {
@@ -686,6 +737,11 @@ void UCombatComponent::UpdateHUDGrenades()
 	}
 }
 
+bool UCombatComponent::ShouldSwapWeapons()
+{
+	return (EquippedWeapon != nullptr && SecondaryWeapon != nullptr);
+}
+
 void UCombatComponent::HandleReload()
 {
 	Character->PlayReloadMontage();
@@ -811,6 +867,19 @@ void UCombatComponent::AttachActorToLeftHand(AActor* ActorToAttach)
 
 }
 
+void UCombatComponent::AttachActorToBackpack(AActor* ActorToAttach)
+{
+	if (Character == nullptr || Character->GetMesh() == nullptr || ActorToAttach == nullptr)
+		return;
+
+	const USkeletalMeshSocket* BackpackSocket = Character->GetMesh()->GetSocketByName(FName("BackpackSocket"));
+
+	if (BackpackSocket)
+	{
+		BackpackSocket->AttachActor(ActorToAttach, Character->GetMesh());
+	}
+}
+
 void UCombatComponent::UpdateCarriedAmmo()
 {
 	if (EquippedWeapon == nullptr)
@@ -829,13 +898,13 @@ void UCombatComponent::UpdateCarriedAmmo()
 	}
 }
 
-void UCombatComponent::PlayEquipWeaponSound()
+void UCombatComponent::PlayEquipWeaponSound(AWeapon* WeaponToEquip)
 {
-	if (Character && EquippedWeapon && EquippedWeapon->EquipSound)
+	if (Character && WeaponToEquip && WeaponToEquip->EquipSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(
 			this,
-			EquippedWeapon->EquipSound,
+			WeaponToEquip->EquipSound,
 			Character->GetActorLocation()
 		);
 	}

@@ -42,6 +42,14 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	class UStaticMeshComponent* PickupMesh;
+
+	FTimerHandle BindOverlapTimer;
+
+	float BindOverlapTime = 0.25f;
+
+private:
+	// 스폰되자마자 플레이어가 먹으면 바인딩이 안될 수 있다 그 부분을 해결하기 위한 함수
+	void BindOverlapTimerFinished();
 public:	
 
 };

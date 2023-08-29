@@ -79,7 +79,11 @@ void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	SpawnDefaultWeapon();
+
+	UpdateHUDAmmo();
 	UpdateHUDHealth();
+	UpdateHUDShield();
 
 	// 서버에서만 데미지 줘야함
 	if (HasAuthority())
@@ -132,6 +136,7 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	// .즉, OverlappingWeapon 속성은 ABlasterCharacter를 소유한 클라이언트에게만 복제될 것입니다.
 	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
 	DOREPLIFETIME(ABlasterCharacter, Health);
+	DOREPLIFETIME(ABlasterCharacter, Shield);
 	DOREPLIFETIME(ABlasterCharacter, bDisableGameplay);
 }
 
@@ -145,10 +150,7 @@ void ABlasterCharacter::OnRep_ReplicatedMovement()
 }
 void ABlasterCharacter::Elim()
 {
-	if (Combat && Combat->EquippedWeapon)
-	{
-		Combat->EquippedWeapon->Dropped();
-	}
+	DropOrDestroyWeapons();
 	// 게임 모드는 서버에만 존재하고 서버에서 Elim을 실행하기 때문에 여긴 서버에 해당
 	MulticastElim();
 	// 부활 요청
@@ -260,6 +262,7 @@ void ABlasterCharacter::PostInitializeComponents()
 	{
 		Buff->Character = this;
 		Buff->SetInitialSpeed(GetCharacterMovement()->MaxWalkSpeed, GetCharacterMovement()->MaxWalkSpeedCrouched);
+		Buff->SetInitialJumpVelocity(GetCharacterMovement()->JumpZVelocity);
 	}
 }
 
@@ -362,10 +365,27 @@ void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const 
 	if (bElimmed)
 		return;
 
+	float DamageToHealth = Damage;
+	if (Shield > 0.f)
+	{
+		if (Shield >= Damage)
+		{
+			Shield = FMath::Clamp(Shield - Damage, 0, MaxShield);
+			// 쉴드량이 들어온 대미지보다 높으면 DamageToHealth 은 0이된다
+			DamageToHealth = 0.f;
+		}
+		else
+		{
+			DamageToHealth = FMath::Clamp(DamageToHealth - Shield, 0, Damage);
+			Shield = 0.f;
+		}
+	}
 	// Health는 복제중 그래서 값이 바뀌는 순간 OnRep_Health()함수가 실행됨
-	Health = FMath::Clamp(FMath::CeilToInt(Health - Damage), 0, FMath::CeilToInt(MaxHealth));
+	Health = FMath::Clamp(FMath::CeilToInt(Health - DamageToHealth), 0, FMath::CeilToInt(MaxHealth));
+
 	// HUD 업데이트하고 몽타주 실행
 	UpdateHUDHealth();
+	UpdateHUDShield();
 	PlayHitReactMontage();
 
 	// 죽었을때
@@ -432,16 +452,17 @@ void ABlasterCharacter::EquipButtonPressed()
 	// HasAuthority = 서버만 호출 가능
 	if (Combat)
 	{
-		if (HasAuthority())
-		{
-			Combat->EquipWeapon(OverlappingWeapon);
-		}
-		else
-		{
-			// 다른 클라는 권한이 없기 때문에 무기 장착을 할 수 없다
-			// 그래서 RPC를 이용하여 장착
-			ServerEquipButtonPressed();
-		}
+		ServerEquipButtonPressed();
+		//if (HasAuthority())
+		//{
+		//	Combat->EquipWeapon(OverlappingWeapon);
+		//}
+		//else
+		//{
+		//	// 다른 클라는 권한이 없기 때문에 무기 장착을 할 수 없다
+		//	// 그래서 RPC를 이용하여 장착
+		//	ServerEquipButtonPressed();
+		//}
 	}
 }
 
@@ -449,7 +470,14 @@ void ABlasterCharacter::ServerEquipButtonPressed_Implementation()
 {
 	if (Combat)
 	{
-		Combat->EquipWeapon(OverlappingWeapon);
+		if (OverlappingWeapon)
+		{
+			Combat->EquipWeapon(OverlappingWeapon);
+		}
+		else if(Combat->ShouldSwapWeapons())
+		{
+			Combat->SwapWeapons();
+		}
 	}
 }
 
@@ -722,6 +750,19 @@ void ABlasterCharacter::OnRep_Health(float LastHealth)
 	}
 }
 
+void ABlasterCharacter::OnRep_Shield(float LastShield)
+{
+	// HUD 업데이트하고 몽타주 실행
+	UpdateHUDShield();
+
+	// 갱신된 HP가 갱신되기 전의 HP보다 작다면
+	// 데미지를 입은 상황이므로 HitReactMontage를 실행해야한다.
+	if (Shield < LastShield)
+	{
+		PlayHitReactMontage();
+	}
+}
+
 void ABlasterCharacter::UpdateHUDHealth()
 {
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
@@ -729,6 +770,47 @@ void ABlasterCharacter::UpdateHUDHealth()
 	if (BlasterPlayerController)
 	{
 		BlasterPlayerController->SetHUDHealth(Health, MaxHealth);
+	}
+}
+
+void ABlasterCharacter::UpdateHUDShield()
+{
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
+
+	if (BlasterPlayerController)
+	{
+		BlasterPlayerController->SetHUDShield(Shield, MaxShield);
+	}
+}
+
+void ABlasterCharacter::UpdateHUDAmmo()
+{
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
+
+	if (BlasterPlayerController && Combat && Combat->EquippedWeapon)
+	{
+		BlasterPlayerController->SetHUDCarriedAmmo(Combat->CarriedAmmo);
+		BlasterPlayerController->SetHUDWeaponAmmo(Combat->EquippedWeapon->GetAmmo());
+	}
+}
+
+void ABlasterCharacter::SpawnDefaultWeapon()
+{
+	ABlasterGameMode* BlasterGameMode = Cast<ABlasterGameMode>(UGameplayStatics::GetGameMode(this));
+
+	UWorld* World = GetWorld();
+
+	// 블라스터 게임모드가 널이 아니라면 BlasterLevel이라는것을 알 수 있다
+	// 로비나 TitleLevel은 BlasterGameMode를 사용 안 하기때문에 널이 됨
+	if (BlasterGameMode && World && !bElimmed && DefaultWeaponClass)
+	{
+		AWeapon* StartingWeapon =  World->SpawnActor<AWeapon>(DefaultWeaponClass);
+		StartingWeapon->bDestroyWeapon = true;
+
+		if (Combat)
+		{
+			Combat->EquipWeapon(StartingWeapon);
+		}
 	}
 }
 
@@ -768,6 +850,36 @@ void ABlasterCharacter::RotateInPlace(float DeltaTime)
 			OnRep_ReplicatedMovement();
 		}
 		CalculateAO_Pitch();
+	}
+}
+
+void ABlasterCharacter::DropOrDestroyWeapon(AWeapon* Weapon)
+{
+	if (Weapon == nullptr)
+		return;
+
+	if (Weapon->bDestroyWeapon)
+	{
+		Weapon->Destroy();
+	}
+	else
+	{
+		Weapon->Dropped();
+	}
+}
+
+void ABlasterCharacter::DropOrDestroyWeapons()
+{
+	if (Combat)
+	{
+		if (Combat->EquippedWeapon)
+		{
+			DropOrDestroyWeapon(Combat->EquippedWeapon);
+		}
+		if (Combat->SecondaryWeapon)
+		{
+			DropOrDestroyWeapon(Combat->SecondaryWeapon);
+		}
 	}
 }
 

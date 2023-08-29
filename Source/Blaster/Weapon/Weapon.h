@@ -13,6 +13,7 @@ enum class EWeaponState : uint8
 	// 초기값 첨 무기 생성될때
 	EWS_Initial UMETA(DisplayName = "Initial State"),
 	EWS_Equipped UMETA(DisplayName = "Equipped"),
+	EWS_EquippedSecondary UMETA(DisplayName = "EquippedSecondary"),
 	EWS_Dropped UMETA(DisplayName = "Dropped"),
 	EWS_MAX UMETA(DisplayName = "DefaulMax")
 };
@@ -37,6 +38,11 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	virtual void OnWeaponStateSet();
+	virtual void OnEquipped();
+	virtual void OnDropped();
+	virtual void OnEquippedSecondary();
+
 	UFUNCTION()
 	virtual void OnSphereOverlap(UPrimitiveComponent* OverlappedComponent,
 		AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
@@ -45,6 +51,7 @@ protected:
 	UFUNCTION()
 	void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent,
 		AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = "Weapon Properties")
@@ -126,6 +133,8 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	class USoundCue* EquipSound;
+
+	bool bDestroyWeapon = false;
 
 	// Enable or Disable Custom Depth
 	void EnableCustomDepth(bool bEnable);

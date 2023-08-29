@@ -34,17 +34,29 @@ APickup::APickup()
 void APickup::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	// 복제된 액터이고 서버에서만 이벤트 발생하도록
+
 	if (HasAuthority())
 	{
-		OverlapSphere->OnComponentBeginOverlap.AddDynamic(this, &APickup::OnSphereOverlap);
+		GetWorldTimerManager().SetTimer(
+			BindOverlapTimer,
+			this,
+			&APickup::BindOverlapTimerFinished,
+			BindOverlapTime
+		);
 	}
 }
 
 void APickup::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
 	int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+}
+
+void APickup::BindOverlapTimerFinished()
+{
+	// 타이머가 끝난 뒤 바인딩을 한다.
+	// 복제된 액터이고 서버에서만 이벤트 발생하도록
+	OverlapSphere->OnComponentBeginOverlap.AddDynamic(this, &APickup::OnSphereOverlap);
+	
 }
 
 void APickup::Tick(float DeltaTime)

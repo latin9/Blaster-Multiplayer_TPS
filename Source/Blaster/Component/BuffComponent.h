@@ -29,10 +29,19 @@ private:
 	// 치료되어야할 회복량?
 	float AmountToHeal = 0.f;
 
+	// 쉴드
+	bool bShieldReplenishing = false;
+	float ShieldReplenishRate = 0.f;
+	float ShieldReplenishAmmount = 0.f;
+
 	// 스피드
 	FTimerHandle SpeedBuffTimer;
 	float InitialBaseSpeed;
 	float InitialCrouchSpeed;
+
+	// 점프
+	FTimerHandle JumpBuffTimer;
+	float InitialJumpVelocity;
 
 protected:
 	virtual void BeginPlay() override;
@@ -40,15 +49,23 @@ protected:
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	void Heal(float HealAmount, float HealingTime);
+	void ReplenishShield(float ShieldAmount, float ReplenishTime);
 	void BuffSpeed(float BuffBaseSpeed, float BuffCrouchSpeed, float BuffTime);
+	void BuffJump(float BuffJumpVelocity, float  BuffTime);
 	void SetInitialSpeed(float BaseSpeed, float CrouchSpeed);
+	void SetInitialJumpVelocity(float JumpVelocity);
 
 protected:
 	void HealRampUp(float DeltaTime);
+	void ShieldampUp(float DeltaTime);
 
 private:
 	void ResetSpeeds();
+	void ResetJump();
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastSpeedBuff(float BaseSpeed, float CrouchSpeed);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastJumpBuff(float JumpVelocity);
 };

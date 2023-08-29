@@ -49,6 +49,10 @@ public:
 	void ShowSniperScopeWidget(bool bShowScope);
 
 	void UpdateHUDHealth();
+	void UpdateHUDShield();
+	void UpdateHUDAmmo();
+
+	void SpawnDefaultWeapon();
 
 protected:
 	virtual void BeginPlay() override;
@@ -80,13 +84,16 @@ protected:
 	void PollInit();
 	
 	void RotateInPlace(float DeltaTime);
+	void DropOrDestroyWeapon(AWeapon* Weapon);
+	void DropOrDestroyWeapons();
+
 public:
 
 protected:
 
 private:
 	UPROPERTY(Replicated)
-		bool bDisableGameplay = false;
+	bool bDisableGameplay = false;
 
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class USpringArmComponent* CameraBoom;
@@ -166,6 +173,17 @@ private:
 	UFUNCTION()
 	void OnRep_Health(float LastHealth);
 
+	// Player Shield
+	UPROPERTY(EditAnywhere, Category = "Player Stats")
+	float MaxShield = 100.f;
+
+	// 현재 쉴드
+	UPROPERTY(ReplicatedUsing = OnRep_Shield, VisibleAnywhere, Category = "Player Stats")
+	float Shield = 0.f;
+
+	UFUNCTION()
+	void OnRep_Shield(float LastShield);
+
 	UPROPERTY()
 	class ABlasterPlayerController* BlasterPlayerController;
 
@@ -215,6 +233,11 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* AttachedGrenade;
 
+	// 디폴트 무기
+	// 캐릭터 생성시 바로 장착되는 기본 무기
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<AWeapon> DefaultWeaponClass;
+
 public:
 	void SetOverlappingWeapon(AWeapon* Weapon);
 	bool IsWeaponEquipped();
@@ -228,8 +251,11 @@ public:
 	FORCEINLINE bool ShouldRotateRootBone() const { return bRotateRootBone; }
 	FORCEINLINE bool IsElimmed() const { return bElimmed; }
 	FORCEINLINE float GetHealth() const{ return Health; }
-	FORCEINLINE void SetHealth(float Amount) {Health = Amount; }
+	FORCEINLINE void SetHealth(float _Health) {Health = _Health; }
 	FORCEINLINE float GetMaxHealth() const{ return MaxHealth; }
+	FORCEINLINE float GetShield() const { return Shield; }
+	FORCEINLINE void SetShield(float _Shield) { Shield = _Shield; }
+	FORCEINLINE float GetMaxShield() const { return MaxShield; }
 	ECombatState GetCombatState() const;
 	FORCEINLINE void SetDisableGameplay(bool Enable) { bDisableGameplay = Enable; }
 	FORCEINLINE bool GetDisableGameplay() const { return bDisableGameplay; }
