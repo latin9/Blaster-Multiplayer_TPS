@@ -18,6 +18,16 @@ enum class EWeaponState : uint8
 	EWS_MAX UMETA(DisplayName = "DefaulMax")
 };
 
+UENUM(BlueprintType)
+enum class EFireType : uint8
+{
+	EFT_HitScan UMETA(DisplayName = "HitScanWeapon"),
+	EFT_Projectile UMETA(DisplayName = "ProjectileWeapon"),
+	EFT_Shotgun UMETA(DisplayName = "ShotgunWeapon"),
+
+	EFT_MAX UMETA(DisplayName = "DefaulMax"),
+};
+
 UCLASS()
 class BLASTER_API AWeapon : public AActor
 {
@@ -35,6 +45,8 @@ public:
 	void Dropped();
 	void AddAmmo(int32 AmmoToAdd);
 	void SetHUDAmmo();
+	// 샷건 분산 알고리즘
+	FVector TraceEndWithScatter(const FVector& HitTarget);
 protected:
 	virtual void BeginPlay() override;
 
@@ -84,18 +96,27 @@ private:
 
 
 	// 다른 사람이 쓰다 버린? 무기를 먹었을때 해당 무기에 남아있는 탄 개수가 다르기 때문
-	UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_Ammo)
+	UPROPERTY(EditAnywhere)
 	int32 Ammo;
-
-	UFUNCTION()
-	void OnRep_Ammo();
 
 	// 탄약에서 하나를 뺄 수 있고 이 무기에 유효한 소유자가 있는지 확인할 수 있다.
 	// 유효한 소유자가 있는 경우 해당 소유자의 HUD를 업데이트함
 	void SpendRound();
 
+	UFUNCTION(Client, Reliable)
+	void ClientUpdateAmmo(int32 ServerAmmo);
+
+	UFUNCTION(Client, Reliable)
+	void ClientAddAmmo(int32 AmmoToAdd);
+
 	UPROPERTY(EditAnywhere)
 	int32 MagCapacity;
+
+	// Client-Side Predicting Ammo 관련
+	//  탄약에 대한 처리되지 않은 서버 요청 수입니다.
+	// spendRound에서 증가하고 ClientUpdateAmmo에서 감소합니다.
+	// 즉 Sequence는 탄약이 아직 우리?에게 다시 복제되지 않은 데 소비한 라운드 수를 나타낸다?
+	int32 Sequence = 0;
 
 	UPROPERTY()
 	class ABlasterCharacter* BlasterOwnerCharacter;
@@ -106,7 +127,22 @@ private:
 	UPROPERTY(EditAnywhere)
 	EWeaponType WeaponType;
 
+	// 분산 시스템 적용할건지
+	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
+	bool bUseScatter = false;
+
+protected:
+	// Trace end with scatter
+	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
+	float DistanceToSphere = 800.f;
+	
+	// 분산 시스템에 사용할 구체 반지름
+	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
+	float SphereRadius = 75.f;
+
 public:
+	UPROPERTY(EditAnywhere)
+	EFireType FireType;
 
 	// Texture for the weapon crosshairs
 	UPROPERTY(EditAnywhere, Category = Crosshairs)
@@ -150,5 +186,6 @@ public:
 	FORCEINLINE EWeaponType GetWeaponType() const { return WeaponType; }
 	FORCEINLINE int32 GetAmmo() const { return Ammo; }
 	FORCEINLINE int32 GetMagCapacity() const { return MagCapacity; }
+	FORCEINLINE bool GetUseScatter() const { return bUseScatter; }
 
 };

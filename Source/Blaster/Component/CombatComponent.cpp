@@ -16,6 +16,7 @@
 #include "Sound/SoundCue.h"
 #include "../Character/BlasterAnimInstance.h"
 #include "../Weapon/Projectile.h"
+#include "../Weapon/Shotgun.h"
 
 UCombatComponent::UCombatComponent()	:
 	bCanFire(true)
@@ -97,6 +98,10 @@ void UCombatComponent::SetAiming(bool bIsAiming)
 	if (Character->IsLocallyControlled() && EquippedWeapon->GetWeaponType() == EWeaponType::EWT_SniperRifle)
 	{
 		Character->ShowSniperScopeWidget(bIsAiming);
+	}
+	if (Character->IsLocallyControlled())
+	{
+		bAimButtonPressed = bIsAiming;
 	}
 }
 
@@ -219,16 +224,92 @@ void UCombatComponent::Fire()
 	{
 		bCanFire = false;
 
-		ServerFire(HitTarget);
+		CrosshairShootingFactor = 0.75f;
 
-		if (EquippedWeapon)
+		switch (EquippedWeapon->FireType)
 		{
-			CrosshairShootingFactor = 0.75f;
+		case EFireType::EFT_Projectile:
+			FireProjectileWeapon();
+			break;
+		case EFireType::EFT_HitScan:
+			FireHitScanWeapon();
+			break;
+		case EFireType::EFT_Shotgun:
+			FireShotgun();
+			break;
 		}
 
 		// 총을 발사한 뒤 FireTimer를 실행한다.
 		// 그래야 총을 쏜 뒤의 딜레이 만큼 실행
 		StartFireTimer();
+	}
+}
+
+void UCombatComponent::FireProjectileWeapon()
+{
+	if (EquippedWeapon && Character)
+	{
+		HitTarget = EquippedWeapon->GetUseScatter() ? EquippedWeapon->TraceEndWithScatter(HitTarget) : HitTarget;
+		// 서버가 아닐때 실행해야한다 로컬은 이렇게 안 하면 서버는 총알두 발을 발사하게됨
+		if (!Character->HasAuthority())
+			LocalFire(HitTarget);
+		ServerFire(HitTarget);
+	}
+}
+
+void UCombatComponent::FireHitScanWeapon()
+{
+	if (EquippedWeapon && Character)
+	{
+		HitTarget = EquippedWeapon->GetUseScatter() ? EquippedWeapon->TraceEndWithScatter(HitTarget) : HitTarget;
+		if (!Character->HasAuthority())
+			LocalFire(HitTarget);
+		ServerFire(HitTarget);
+	}
+}
+
+void UCombatComponent::FireShotgun()
+{
+	if (EquippedWeapon)
+	{
+		AShotgun* Shotgun = Cast<AShotgun>(EquippedWeapon);
+		if (Shotgun && Character)
+		{
+			TArray<FVector_NetQuantize> HitTargets;
+			Shotgun->ShotgunTraceEndWithScatter(HitTarget, HitTargets);
+			if (!Character->HasAuthority())
+				ShotgunLocalFire(HitTargets);
+			ServerShotgunFire(HitTargets);
+		}
+	}
+
+}
+
+void UCombatComponent::LocalFire(const FVector_NetQuantize& TraceHitTarget)
+{
+	if (EquippedWeapon == nullptr)
+		return;
+
+	// 장전중일때는 Fire실행하면 안된다
+	if (Character && CombatState == ECombatState::ECS_Unoccupied)
+	{
+		Character->PlayFireMontage(bAiming);
+		EquippedWeapon->Fire(TraceHitTarget);
+	}
+}
+
+void UCombatComponent::ShotgunLocalFire(const TArray<FVector_NetQuantize>& TraceHitTargets)
+{
+	AShotgun* Shotgun = Cast<AShotgun>(EquippedWeapon);
+
+	if (Shotgun == nullptr || Character == nullptr)
+		return;
+
+	if (CombatState == ECombatState::ECS_Reloading || CombatState == ECombatState::ECS_Unoccupied)
+	{
+		Character->PlayFireMontage(bAiming);
+		Shotgun->FireShotgun(TraceHitTargets);
+		CombatState = ECombatState::ECS_Unoccupied;	 // Combat상태 변경
 	}
 }
 
@@ -262,25 +343,24 @@ void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& Trac
 
 void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
-	if (EquippedWeapon == nullptr)
+	// 로컬에서는 이미 해당 작업을 맞췄기때문에 아래의 조건이라면 리턴
+	if (Character && Character->IsLocallyControlled() && !Character->HasAuthority())
 		return;
 
-	// 샷건의 경우 장전 도중 총을 쏠 수 있다
-	if (Character && CombatState == ECombatState::ECS_Reloading && EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Shotgun)
-	{
-		Character->PlayFireMontage(bAiming);
-		EquippedWeapon->Fire(TraceHitTarget);
-		CombatState = ECombatState::ECS_Unoccupied;	 // Combat상태 변경
-		// 여기까지 실행했다면 아래의 코드가 동작하면 안되기 때문에 return 한다.
-		return;
-	}
+	LocalFire(TraceHitTarget);
+}
 
-	// 장전중일때는 Fire실행하면 안된다
-	if (Character && CombatState == ECombatState::ECS_Unoccupied)
-	{
-		Character->PlayFireMontage(bAiming);
-		EquippedWeapon->Fire(TraceHitTarget);
-	}
+void UCombatComponent::ServerShotgunFire_Implementation(const TArray<FVector_NetQuantize>& TraceHitTargets)
+{
+	MulticastShotgunFire(TraceHitTargets);
+}
+
+void UCombatComponent::MulticastShotgunFire_Implementation(const TArray<FVector_NetQuantize>& TraceHitTargets)
+{// 로컬에서는 이미 해당 작업을 맞췄기때문에 아래의 조건이라면 리턴
+	if (Character && Character->IsLocallyControlled() && !Character->HasAuthority())
+		return;
+
+	ShotgunLocalFire(TraceHitTargets);
 }
 
 void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
@@ -468,7 +548,9 @@ bool UCombatComponent::CanFire()
 {
 	if (EquippedWeapon == nullptr)
 		return false;
-
+	// 로컬 리로드로 패브릭 제어
+	if (bLocallyReloading)
+		return false;
 	// 샷건의 리로드중 쏠 수 있게 하기위함
 	if (!EquippedWeapon->IsAmmoEmpty() && bCanFire && CombatState == ECombatState::ECS_Reloading && EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Shotgun)
 		return true;
@@ -552,6 +634,9 @@ void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 
 void UCombatComponent::SwapWeapons()
 {
+	if (CombatState != ECombatState::ECS_Unoccupied)
+		return;
+
 	AWeapon* TempWeapon = EquippedWeapon;
 	EquippedWeapon = SecondaryWeapon;
 	SecondaryWeapon = TempWeapon;
@@ -593,15 +678,27 @@ void UCombatComponent::EquipSecondaryWeapon(AWeapon* WeaponToEquip)
 	PlayEquipWeaponSound(WeaponToEquip);
 }
 
+void UCombatComponent::OnRep_Aiming()
+{
+	if (Character && Character->IsLocallyControlled())
+	{
+		// 클라이언트는 로컬값이 정확해야한다.
+		bAiming = bAimButtonPressed;
+	}
+}
+
 
 void UCombatComponent::Reload()
 {
 	// 클라이언트에 있는 경우 모든 클라이언트에게 다시 리로드 애니메이션을 재생할 시간임을 알리기 전에
 	// 서버가 다시 로드할 수 있는지 확인하도록 RPC를 서버로 보내야 한다.
 	// Ammo가 0개 이상이고, Cobat상태가 ECS_Unoccupied일때만 가능
-	if (CarriedAmmo > 0 && CombatState == ECombatState::ECS_Unoccupied && EquippedWeapon && !EquippedWeapon->IsAmmoFull())
+	if (CarriedAmmo > 0 && CombatState == ECombatState::ECS_Unoccupied && EquippedWeapon && !EquippedWeapon->IsAmmoFull() && !bLocallyReloading)
 	{
 		ServerReload();
+		HandleReload();
+		bLocallyReloading = true;
+		UE_LOG(LogTemp, Error, TEXT("Play Reload"));
 	}
 
 }
@@ -610,6 +707,7 @@ void UCombatComponent::FinishReloading()
 {
 	if (Character == nullptr)
 		return;
+	bLocallyReloading = false;
 	if (Character->HasAuthority())
 	{
 		CombatState = ECombatState::ECS_Unoccupied;
@@ -632,7 +730,10 @@ void UCombatComponent::ServerReload_Implementation()
 	// CombatState상태를 변경하면 OnRep이 실행된다
 	CombatState = ECombatState::ECS_Reloading;
 	// 즉, 서버에서도 해당 함수를 호출하고 클라에서도 동일하게 호출해줘야함
-	HandleReload();
+	if (!Character->IsLocallyControlled())
+	{
+		HandleReload();
+	}
 }
 
 void UCombatComponent::OnRep_CombatState()
@@ -648,7 +749,8 @@ void UCombatComponent::OnRep_CombatState()
 		break;
 	case ECombatState::ECS_Reloading:
 		// 클라에서도 해당 함수를 호출
-		HandleReload();
+		if (Character && !Character->IsLocallyControlled())
+			HandleReload();
 		break;
 	case ECombatState::ECS_ThrowingGrenade:
 		// 로컬플레이어는 이미 ThrowGrenade 몽타주를 실행중이기 때문에 아닐때만 실행
@@ -687,7 +789,7 @@ void UCombatComponent::UpdateAmmoValues()
 		Controller->SetHUDCarriedAmmo(CarriedAmmo);
 	}
 	// 무기의 총알 갱신
-	EquippedWeapon->AddAmmo(-ReloadAmount);
+	EquippedWeapon->AddAmmo(ReloadAmount);
 }
 
 void UCombatComponent::UpdateShotgunAmmoValues()
@@ -708,7 +810,7 @@ void UCombatComponent::UpdateShotgunAmmoValues()
 		Controller->SetHUDCarriedAmmo(CarriedAmmo);
 	}
 	// 무기의 총알 갱신
-	EquippedWeapon->AddAmmo(-1);
+	EquippedWeapon->AddAmmo(1);
 	// true로 하면 장전후 중간에 다시 쏠 수 있다.
 	bCanFire = true;
 	// 총알 장전도중 무기에 들어있는 총알이 최대거나
@@ -744,7 +846,8 @@ bool UCombatComponent::ShouldSwapWeapons()
 
 void UCombatComponent::HandleReload()
 {
-	Character->PlayReloadMontage();
+	if (Character)
+		Character->PlayReloadMontage();
 }
 
 int32 UCombatComponent::AmountToReload()

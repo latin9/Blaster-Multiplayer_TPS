@@ -70,6 +70,11 @@ protected:
 	UFUNCTION(Client, Reliable)
 	void ClientJoinMidgame(FName StateOfMatch, float Warmup, float Match, float Cooldown, float StartingTime);
 
+	void HighPingWarning();
+	void StopHighPingWarning();
+	void CheckPing(float DeltaTime);
+
+
 private:
 	UPROPERTY()
 	class ABlasterHUD* BlasterHUD;
@@ -108,4 +113,21 @@ private:
 	bool bInitializeCarriedAmmo = false;
 	int32 HUDWeaponAmmo;
 	bool bInitializeWeaponAmmo = false;
+
+	// 핑
+	float HighPingRunningTime = 0.f;
+
+	// HighPingAnimation을 몇초동안 실행(지속)할건지
+	UPROPERTY(EditAnywhere)
+	float HighPingDuration = 5.f;
+
+	float PingAnimationRunningTime = 0.f;
+
+	// 핑을 몇초마다 체크할건지?
+	UPROPERTY(EditAnywhere)
+	float CheckPingFrequency = 20.f;
+
+	// 하이핑 임계값
+	UPROPERTY(EditAnywhere)
+	float HightPingThreshold = 50.f;
 };

@@ -14,6 +14,7 @@
 #include "../Component/CombatComponent.h"
 #include "../GameState/BlasterGameState.h"
 #include "../PlayerState/BlasterPlayerState.h"
+#include "Components/Image.h"
 
 void ABlasterPlayerController::BeginPlay()
 {
@@ -263,6 +264,8 @@ void ABlasterPlayerController::Tick(float DeltaTime)
 	SetHUDTime();
 	CheckTimeSync(DeltaTime);
 	PollInit();
+
+	CheckPing(DeltaTime);
 }
 
 float ABlasterPlayerController::GetServerTime()
@@ -473,6 +476,73 @@ void ABlasterPlayerController::CheckTimeSync(float DeltaTime)
 	{
 		ServerRequestServerTime(GetWorld()->GetTimeSeconds());
 		TimeSyncRunningTime = 0.f;
+	}
+}
+
+void ABlasterPlayerController::HighPingWarning()
+{
+	BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
+
+	bool bHUDValid = BlasterHUD && BlasterHUD->GetCharacterOverlay()
+		&& BlasterHUD->GetCharacterOverlay()->HighPingImage
+		&& BlasterHUD->GetCharacterOverlay()->HighPingAnimation;
+	if (bHUDValid)
+	{
+		BlasterHUD->GetCharacterOverlay()->HighPingImage->SetOpacity(1.f);
+		BlasterHUD->GetCharacterOverlay()->PlayAnimation(BlasterHUD->GetCharacterOverlay()->HighPingAnimation, 0.f, 5);
+	}
+}
+
+void ABlasterPlayerController::StopHighPingWarning()
+{
+	BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
+
+	bool bHUDValid = BlasterHUD && BlasterHUD->GetCharacterOverlay()
+		&& BlasterHUD->GetCharacterOverlay()->HighPingImage
+		&& BlasterHUD->GetCharacterOverlay()->HighPingAnimation;
+	if (bHUDValid)
+	{
+		BlasterHUD->GetCharacterOverlay()->HighPingImage->SetOpacity(0.f);
+		if (BlasterHUD->GetCharacterOverlay()->IsAnimationPlaying(BlasterHUD->GetCharacterOverlay()->HighPingAnimation))
+		{
+			BlasterHUD->GetCharacterOverlay()->StopAnimation(BlasterHUD->GetCharacterOverlay()->HighPingAnimation);
+		}
+	}
+}
+
+void ABlasterPlayerController::CheckPing(float DeltaTime)
+{
+	HighPingRunningTime += DeltaTime;
+
+	if (HighPingRunningTime >= CheckPingFrequency)
+	{
+		PlayerState = PlayerState == nullptr ? GetPlayerState<APlayerState>() : PlayerState;
+
+		if (PlayerState)
+		{
+			// 언리얼 엔진은 핑을 계산하고 그 핑을 4로 나누어 uint8로 압축한다다.
+			// 그래서 진정한 핑을 얻으려면 4를 곱해야한다.
+			if (PlayerState->GetCompressedPing() * 4 > HightPingThreshold)
+			{
+				HighPingWarning();
+				PingAnimationRunningTime = 0.f;
+			}
+		}
+		HighPingRunningTime = 0.f;
+	}
+
+	bool bIsHighPingAnimationPlaying = BlasterHUD && BlasterHUD->GetCharacterOverlay()
+		&& BlasterHUD->GetCharacterOverlay()->HighPingAnimation
+		&& BlasterHUD->GetCharacterOverlay()->IsAnimationPlaying(BlasterHUD->GetCharacterOverlay()->HighPingAnimation);
+
+	if (bIsHighPingAnimationPlaying)
+	{
+		PingAnimationRunningTime += DeltaTime;
+
+		if (PingAnimationRunningTime >= HighPingDuration)
+		{
+			StopHighPingWarning();
+		}
 	}
 }
 

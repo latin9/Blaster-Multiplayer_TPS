@@ -34,7 +34,7 @@ protected:
 	void StartSpawnPickupTimer(AActor* DestroyedActor);
 
 private:
-	FTimerHandle SpawnPickupTimer;
+	FTimerHandle SpawnPickupTimer; 
 
 	UPROPERTY(EditAnywhere)
 	float SpawnPickupTimeMin;

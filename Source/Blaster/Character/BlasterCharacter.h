@@ -238,12 +238,68 @@ private:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<AWeapon> DefaultWeaponClass;
 
+	// 히트박스 Server-side rewind용
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* Head;
+	
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* Pelvis;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* Spine02;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* Spine03;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* UpperArm_L;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* UpperArm_R;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* LowerArm_L;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* LowerArm_R;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* Hand_L;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* Hand_R;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* BackpackBottom;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* BackpackTop;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* Thigh_L;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* Thigh_R;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* Calf_L;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* Calf_R;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* Foot_L;
+
+	UPROPERTY(EditAnywhere)
+	class UBoxComponent* Foot_R;
+
 public:
 	void SetOverlappingWeapon(AWeapon* Weapon);
 	bool IsWeaponEquipped();
 	bool IsAiming();
 	FORCEINLINE float GetAO_Yaw() const { return AO_Yaw; }
 	FORCEINLINE float GetAO_Pitch() const { return AO_Pitch; }
+
 	AWeapon* GetEquippedWeapon();
 	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace; }
 	FVector GetHitTarget()	const;
@@ -263,6 +319,29 @@ public:
 	FORCEINLINE UAnimMontage* GetReloadMontage() const { return ReloadMontage; }
 	FORCEINLINE class UStaticMeshComponent* GetAttachedGrenade() const { return AttachedGrenade; }
 	FORCEINLINE class UBuffComponent* GetBuffComponent() const { return Buff; }
+
+	// 히트박스 Server-side rewind용
+	FORCEINLINE class UBoxComponent* GetHeadComponent() const { return Head; }
+	FORCEINLINE class UBoxComponent* GetPelvisComponent() const { return Pelvis; }
+	FORCEINLINE class UBoxComponent* GetSpine02Component() const { return Spine02; }
+	FORCEINLINE class UBoxComponent* GetSpine03Component() const { return Spine03; }
+	FORCEINLINE class UBoxComponent* GetUpperArmLComponent() const { return UpperArm_L; }
+	FORCEINLINE class UBoxComponent* GetUpperArmRComponent() const { return UpperArm_R; }
+	FORCEINLINE class UBoxComponent* GetLowerArmLComponent() const { return LowerArm_L; }
+	FORCEINLINE class UBoxComponent* GetLowerArmRComponent() const { return LowerArm_R; }
+	FORCEINLINE class UBoxComponent* GetHandLComponent() const { return Hand_L; }
+	FORCEINLINE class UBoxComponent* GetHandRComponent() const { return Hand_R; }
+	FORCEINLINE class UBoxComponent* GetBackpackBottomComponent() const { return BackpackBottom; }
+	FORCEINLINE class UBoxComponent* GetBackpackTopComponent() const { return BackpackTop; }
+	FORCEINLINE class UBoxComponent* GetThighLComponent() const { return Thigh_L; }
+	FORCEINLINE class UBoxComponent* GetThighRComponent() const { return Thigh_R; }
+	FORCEINLINE class UBoxComponent* GetCalfLComponent() const { return Calf_L; }
+	FORCEINLINE class UBoxComponent* GetCalfRComponent() const { return Calf_R; }
+	FORCEINLINE class UBoxComponent* GetFootLComponent() const { return Foot_L; }
+	FORCEINLINE class UBoxComponent* GetFootRComponent() const { return Foot_R; }
+
+
+	bool IsLocallyReloading();
 public: 
 	UFUNCTION(Client, Reliable)
 	void ClientSetName(const FString& Name);

@@ -44,4 +44,11 @@ public:
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* GrenadeText;
+
+	UPROPERTY(meta = (BindWidget))
+	class UImage* HighPingImage;
+
+	//Transient = 디스크에 직렬화되지 않음을 의미
+	UPROPERTY(meta = (BindWidgetAnim), Transient)
+	UWidgetAnimation* HighPingAnimation;
 };

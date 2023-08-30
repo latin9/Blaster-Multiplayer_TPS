@@ -12,6 +12,7 @@
 #include "Engine/SkeletalMeshSocket.h"
 #include "../PlayerController/BlasterPlayerController.h"
 #include "../Component/CombatComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 
 // Sets default values
 AWeapon::AWeapon()	
@@ -48,11 +49,6 @@ void AWeapon::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (PickupWidget)
-	{
-		PickupWidget->SetVisibility(false);
-	}
-	// GetLocalRole() == ENetRole::ROLE_Authority 가 HasAuthority()랑 동일
 	if (HasAuthority())
 	{
 		AreaSphere->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
@@ -60,7 +56,10 @@ void AWeapon::BeginPlay()
 		AreaSphere->OnComponentBeginOverlap.AddDynamic(this, &AWeapon::OnSphereOverlap);
 		AreaSphere->OnComponentEndOverlap.AddDynamic(this, &AWeapon::OnSphereEndOverlap);
 	}
-	
+	if (PickupWidget)
+	{
+		PickupWidget->SetVisibility(false);
+	}
 }
 
 void AWeapon::Tick(float DeltaTime)
@@ -75,7 +74,6 @@ void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AWeapon, WeaponState);
-	DOREPLIFETIME(AWeapon, Ammo);
 }
 
 
@@ -100,26 +98,62 @@ void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 	}
 }
 
-
 void AWeapon::SpendRound()
 {
 	// 0이하로 안내려가게끔 설정
 	Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
+	SetHUDAmmo();
 
+	if (HasAuthority())
+	{
+		ClientUpdateAmmo(Ammo);
+	}
+	// IsLocallyControlled일때만 해야됨 그렇지 않으면
+	// 클라이언트가 많을수록 Sequence값이 클라수만큼 증가하게 된다.
+	else if(BlasterOwnerCharacter && BlasterOwnerCharacter->IsLocallyControlled())
+	{
+		//UE_LOG(LogTemp, Error, TEXT("++Sequence"));
+		++Sequence;
+	}
+}
+
+void AWeapon::ClientUpdateAmmo_Implementation(int32 ServerAmmo)
+{
+	if (HasAuthority())
+		return;
+
+	// 인자로 들어온 권한있는 값으로 설정한 뒤 처리된 서버 응답을 수신하여 시퀀스를 감소한다.
+	Ammo = ServerAmmo;
+	// 즉 처리 안 된 서버 요청 하나가 방금 처리 된것이다.
+	if (Sequence > 0)
+		--Sequence;
+	Ammo -= Sequence;
 	SetHUDAmmo();
 }
-void AWeapon::OnRep_Ammo()
-{
-	BlasterOwnerCharacter = BlasterOwnerCharacter == nullptr ? Cast<ABlasterCharacter>(GetOwner()) : BlasterOwnerCharacter;
 
-	// 장전도중(총알값이 변경되는 도중) 총알이 꽉찼다면 애니메이션을 End로 변경(샷건에 한함)
+void AWeapon::AddAmmo(int32 AmmoToAdd)
+{
+	Ammo = FMath::Clamp(Ammo + AmmoToAdd, 0, MagCapacity);
+	// 총알 개수가 바뀌었기 때문에 HUD 갱신
+	SetHUDAmmo();
+	ClientAddAmmo(AmmoToAdd);
+}
+
+void AWeapon::ClientAddAmmo_Implementation(int32 AmmoToAdd)
+{
+	if (HasAuthority())
+		return;
+
+	Ammo = FMath::Clamp(Ammo + AmmoToAdd, 0, MagCapacity);
+	BlasterOwnerCharacter = BlasterOwnerCharacter == nullptr ? Cast<ABlasterCharacter>(GetOwner()) : BlasterOwnerCharacter;
 	if (BlasterOwnerCharacter && BlasterOwnerCharacter->GetCombatComponent() && IsAmmoFull())
 	{
 		BlasterOwnerCharacter->GetCombatComponent()->JumpToShotgunEnd();
 	}
-
 	SetHUDAmmo();
 }
+
+
 void AWeapon::OnRep_Owner()
 {
 	Super::OnRep_Owner();
@@ -281,7 +315,6 @@ void AWeapon::Fire(const FVector& HitTarget)
 			}
 		}
 	}
-
 	SpendRound();
 }
 
@@ -297,13 +330,6 @@ void AWeapon::Dropped()
 	BlasterOwnerController = nullptr;
 }
 
-void AWeapon::AddAmmo(int32 AmmoToAdd)
-{
-	Ammo = FMath::Clamp(Ammo - AmmoToAdd, 0, MagCapacity);
-
-	// 총알 개수가 바뀌었기 때문에 HUD 갱신
-	SetHUDAmmo();
-}
 
 void AWeapon::SetHUDAmmo()
 {
@@ -320,3 +346,33 @@ void AWeapon::SetHUDAmmo()
 	}
 }
 
+
+FVector AWeapon::TraceEndWithScatter(const FVector& HitTarget)
+{
+	const USkeletalMeshSocket* MuzzleFlashSocket = GetWeaponMesh()->GetSocketByName(FName("MuzzleFlash"));
+	// 여기서 MuzzleFlashSocket && InstigatorController로 하면 안된다
+	// 컨트롤러는 자신의 pawn을 제어하기 위해 있는것이다 즉 플레이어를 위해서만 존재한다
+	// 그 의미는 시뮬레이드 프록시에서는 유효하지 않다는것
+	// 즉 서버에서 총을 쏘면 다른 클라에서는 해당 파티클이 보이지 않는다.
+	// 다른 pc에서 본인을 제외한 다른 플레이어는 전부 시뮬레이드 프록시기 때문에
+	if (MuzzleFlashSocket == nullptr)
+		return FVector();
+
+	// 라인 트레이스의 시작지점
+	const FTransform SocketTrnasform = MuzzleFlashSocket->GetSocketTransform(GetWeaponMesh());
+	const FVector TraceStart = SocketTrnasform.GetLocation();
+
+	const FVector ToTargetNormalized = (HitTarget - TraceStart).GetSafeNormal();
+	const FVector SphereCenter = TraceStart + ToTargetNormalized * DistanceToSphere;
+	const FVector RandVec = UKismetMathLibrary::RandomUnitVector() * FMath::RandRange(0.f, SphereRadius);
+	const FVector EndLoc = SphereCenter + RandVec;
+	const FVector ToEndLoc = EndLoc - TraceStart;
+
+	//DrawDebugSphere(GetWorld(), SphereCenter, SphereRadius, 12, FColor::Red, true);
+	//DrawDebugSphere(GetWorld(), EndLoc, 4.f, 12, FColor::Orange, true);
+	DrawDebugLine(GetWorld(), TraceStart, FVector(TraceStart + ToEndLoc * TRACE_LENGTH / ToEndLoc.Size()),
+		FColor::Cyan, true);
+
+		// ToEndLoc.size()로 나누는 이유는 TRACE_LENGTH가 8만이여서 곱했을때 범위 벗어나는거 방지를 위함
+	return FVector(TraceStart + ToEndLoc * TRACE_LENGTH / ToEndLoc.Size());
+}

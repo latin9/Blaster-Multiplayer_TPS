@@ -24,6 +24,7 @@
 #include "Particles/ParticleSystemComponent.h"
 #include "../PlayerState/BlasterPlayerState.h"
 #include "../Weapon/WeaponTypes.h"
+#include "Components/BoxComponent.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -71,6 +72,81 @@ ABlasterCharacter::ABlasterCharacter()
 	AttachedGrenade = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("AttachedGrenade"));
 	AttachedGrenade->SetupAttachment(GetMesh(), FName("GrenadeSocket"));
 	AttachedGrenade->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	// Server-side rewind 서버측 되감기
+	// FName은 대소문자 구분하지 않기 때문에 형식?구조만 맞게쓰면 된다.
+	Head = CreateDefaultSubobject<UBoxComponent>(TEXT("HeadBoxComponent"));
+	Head->SetupAttachment(GetMesh(), FName("Head"));
+	Head->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	Pelvis = CreateDefaultSubobject<UBoxComponent>(TEXT("PelvisBoxComponent"));
+	Pelvis->SetupAttachment(GetMesh(), FName("Pelvis"));
+	Pelvis->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	Spine02 = CreateDefaultSubobject<UBoxComponent>(TEXT("Spine02"));
+	Spine02->SetupAttachment(GetMesh(), FName("spine_02"));
+	Spine02->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	Spine03 = CreateDefaultSubobject<UBoxComponent>(TEXT("Spine03"));
+	Spine03->SetupAttachment(GetMesh(), FName("spine_03"));
+	Spine03->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	UpperArm_L = CreateDefaultSubobject<UBoxComponent>(TEXT("UpperArm_L"));
+	UpperArm_L->SetupAttachment(GetMesh(), FName("UpperArm_L"));
+	UpperArm_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	UpperArm_R = CreateDefaultSubobject<UBoxComponent>(TEXT("UpperArm_R"));
+	UpperArm_R->SetupAttachment(GetMesh(), FName("UpperArm_R"));
+	UpperArm_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	LowerArm_L = CreateDefaultSubobject<UBoxComponent>(TEXT("LowerArm_L"));
+	LowerArm_L->SetupAttachment(GetMesh(), FName("LowerArm_L"));
+	LowerArm_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	LowerArm_R = CreateDefaultSubobject<UBoxComponent>(TEXT("LowerArm_R"));
+	LowerArm_R->SetupAttachment(GetMesh(), FName("LowerArm_R"));
+	LowerArm_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	Hand_L = CreateDefaultSubobject<UBoxComponent>(TEXT("Hand_L"));
+	Hand_L->SetupAttachment(GetMesh(), FName("Hand_L"));
+	Hand_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	Hand_R = CreateDefaultSubobject<UBoxComponent>(TEXT("Hand_R"));
+	Hand_R->SetupAttachment(GetMesh(), FName("Hand_R"));
+	Hand_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	BackpackBottom = CreateDefaultSubobject<UBoxComponent>(TEXT("BackpackBottom"));
+	BackpackBottom->SetupAttachment(GetMesh(), FName("BackpackBottom"));
+	BackpackBottom->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	BackpackTop = CreateDefaultSubobject<UBoxComponent>(TEXT("BackpackTop"));
+	BackpackTop->SetupAttachment(GetMesh(), FName("BackpackTop"));
+	BackpackTop->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	Thigh_L = CreateDefaultSubobject<UBoxComponent>(TEXT("Thigh_L"));
+	Thigh_L->SetupAttachment(GetMesh(), FName("Thigh_L"));
+	Thigh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	Thigh_R = CreateDefaultSubobject<UBoxComponent>(TEXT("Thigh_R"));
+	Thigh_R->SetupAttachment(GetMesh(), FName("Thigh_R"));
+	Thigh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	Calf_L = CreateDefaultSubobject<UBoxComponent>(TEXT("Calf_L"));
+	Calf_L->SetupAttachment(GetMesh(), FName("Calf_L"));
+	Calf_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	Calf_R = CreateDefaultSubobject<UBoxComponent>(TEXT("Calf_R"));
+	Calf_R->SetupAttachment(GetMesh(), FName("Calf_R"));
+	Calf_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	Foot_L = CreateDefaultSubobject<UBoxComponent>(TEXT("Foot_L"));
+	Foot_L->SetupAttachment(GetMesh(), FName("Foot_L"));
+	Foot_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	Foot_R = CreateDefaultSubobject<UBoxComponent>(TEXT("Foot_R"));
+	Foot_R->SetupAttachment(GetMesh(), FName("Foot_R"));
+	Foot_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 
 	LocalPlayerName = FString(TEXT("Player"));
 }
@@ -453,16 +529,6 @@ void ABlasterCharacter::EquipButtonPressed()
 	if (Combat)
 	{
 		ServerEquipButtonPressed();
-		//if (HasAuthority())
-		//{
-		//	Combat->EquipWeapon(OverlappingWeapon);
-		//}
-		//else
-		//{
-		//	// 다른 클라는 권한이 없기 때문에 무기 장착을 할 수 없다
-		//	// 그래서 RPC를 이용하여 장착
-		//	ServerEquipButtonPressed();
-		//}
 	}
 }
 
@@ -976,6 +1042,14 @@ ECombatState ABlasterCharacter::GetCombatState() const
 		return ECombatState::ECS_MAX;
 
 	return Combat->CombatState;
+}
+
+bool ABlasterCharacter::IsLocallyReloading()
+{
+	if (Combat == nullptr)
+		return false;
+
+	return Combat->GetLocallyReloading();
 }
 
 void ABlasterCharacter::ClientSetName_Implementation(const FString& Name)

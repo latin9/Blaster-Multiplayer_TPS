@@ -19,8 +19,6 @@ public:
 	virtual void Fire(const FVector& HitTarget) override;
 	
 protected:
-	// 샷건 분산 알고리즘
-	FVector TraceEndWithScatter(const FVector& TraceStart, const FVector& HitTarget);
 	void WeaponTraceHit(const FVector& TraceStart, const FVector& HitTarget, FHitResult& OutHit);
 
 protected:
@@ -45,16 +43,4 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	class USoundCue* FireSound;
-
-	// Trace end with scatter
-	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
-	float DistanceToSphere = 800.f;
-	
-	// 분산 시스템에 사용할 구체 반지름
-	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
-	float SphereRadius = 75.f;
-
-	// 분산 시스템 적용할건지
-	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
-	bool bUseScatter = false;
 };
