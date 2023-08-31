@@ -6,11 +6,54 @@
 #include "Components/ActorComponent.h"
 #include "LagCompensationComponent.generated.h"
 
+USTRUCT(BlueprintType)
+struct FBoxInformation
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FVector Location;
+
+	UPROPERTY()
+	FRotator Rotation;
+
+	UPROPERTY()
+	FVector BoxExtent;
+};
+
+USTRUCT(BlueprintType)
+struct FFramePackage
+{
+	GENERATED_BODY()
+
+	// 정보가 저장된 시간
+	UPROPERTY()
+	float Time;
+
+	// 히트박스 정보를 담은 Map 
+	UPROPERTY()
+	TMap<FName, FBoxInformation> HitBoxInfo;
+};
+
+USTRUCT(BlueprintType)
+struct FServerSideRewindResult
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	bool bHitConfirmed;	// 적중 되었는지
+
+	UPROPERTY()
+	bool bHeadShot;	// 헤드샷 적중인지
+};
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class BLASTER_API ULagCompensationComponent : public UActorComponent
 {
 	GENERATED_BODY()
+
+public:
+	friend class ABlasterCharacter;
 
 public:	
 	ULagCompensationComponent();
@@ -20,8 +63,31 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 protected:
+	void SaveFramePackage(FFramePackage& Package);
+	FFramePackage InterpBetweenFrames(const FFramePackage& OlderFrame, const FFramePackage& YoungerFrame, float HitTime);
+	FServerSideRewindResult ConfirmHit(const FFramePackage& Package, class ABlasterCharacter* HitCharacter, 
+		const FVector_NetQuantize& TraceStart, const FVector_NetQuantize& HitLocation);
+	void CacheBoxPositions(class ABlasterCharacter* HitCharacter, FFramePackage& OutFramePackage);
+	void MoveBoxes(class ABlasterCharacter* HitCharacter, const FFramePackage& Package);
+	void ResetHitBoxes(class ABlasterCharacter* HitCharacter, const FFramePackage& Package);
+	void EnableCharacterMeshCollision(class ABlasterCharacter* HitCharacter, ECollisionEnabled::Type CollisionEnabled);
+	
+public:
+	void ShowFramePackage(const FFramePackage& Package, const FColor& Color);
+	FServerSideRewindResult ServerSideRewind(class ABlasterCharacter* HitCharacter, const FVector_NetQuantize& TraceStart,
+		const FVector_NetQuantize& HitLocation, float HitTime);
 
 private:
+	UPROPERTY()
+	class ABlasterCharacter* Character;
+
+	UPROPERTY()
+	class ABlasterPlayerController* Controller;
+
+	TDoubleLinkedList<FFramePackage> FrameHistory;
+
+	UPROPERTY(EditAnywhere)
+	float MaxRecordTime = 4.f;
 
 public:
 

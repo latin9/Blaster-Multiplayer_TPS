@@ -115,12 +115,16 @@ private:
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
+
+	// BlasterComponents
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* Combat;
 	
-
 	UPROPERTY(VisibleAnywhere)
 	class UBuffComponent* Buff;
+
+	UPROPERTY(VisibleAnywhere)
+	class ULagCompensationComponent* LagCompensation;
 
 	// 서버 RPC를 신뢰할 수 있도록 Reliable 선언
 	UFUNCTION(Server, Reliable)
@@ -246,10 +250,10 @@ private:
 	class UBoxComponent* Pelvis;
 
 	UPROPERTY(EditAnywhere)
-	class UBoxComponent* Spine02;
+	class UBoxComponent* Spine_02;
 
 	UPROPERTY(EditAnywhere)
-	class UBoxComponent* Spine03;
+	class UBoxComponent* Spine_03;
 
 	UPROPERTY(EditAnywhere)
 	class UBoxComponent* UpperArm_L;
@@ -293,6 +297,9 @@ private:
 	UPROPERTY(EditAnywhere)
 	class UBoxComponent* Foot_R;
 
+	UPROPERTY()
+	TMap<FName, class UBoxComponent*> HitCollisionBoxes;
+
 public:
 	void SetOverlappingWeapon(AWeapon* Weapon);
 	bool IsWeaponEquipped();
@@ -323,8 +330,8 @@ public:
 	// 히트박스 Server-side rewind용
 	FORCEINLINE class UBoxComponent* GetHeadComponent() const { return Head; }
 	FORCEINLINE class UBoxComponent* GetPelvisComponent() const { return Pelvis; }
-	FORCEINLINE class UBoxComponent* GetSpine02Component() const { return Spine02; }
-	FORCEINLINE class UBoxComponent* GetSpine03Component() const { return Spine03; }
+	FORCEINLINE class UBoxComponent* GetSpine02Component() const { return Spine_02; }
+	FORCEINLINE class UBoxComponent* GetSpine03Component() const { return Spine_03; }
 	FORCEINLINE class UBoxComponent* GetUpperArmLComponent() const { return UpperArm_L; }
 	FORCEINLINE class UBoxComponent* GetUpperArmRComponent() const { return UpperArm_R; }
 	FORCEINLINE class UBoxComponent* GetLowerArmLComponent() const { return LowerArm_L; }
@@ -339,6 +346,9 @@ public:
 	FORCEINLINE class UBoxComponent* GetCalfRComponent() const { return Calf_R; }
 	FORCEINLINE class UBoxComponent* GetFootLComponent() const { return Foot_L; }
 	FORCEINLINE class UBoxComponent* GetFootRComponent() const { return Foot_R; }
+	FORCEINLINE TMap<FName, class UBoxComponent*> GetHitColisionBoxes() const { return HitCollisionBoxes; }
+	FORCEINLINE class ULagCompensationComponent* GetLagCompensationComponent() const { return LagCompensation; }
+	class UBoxComponent* GetHitColisionBoxFromFName(const FName& Name);
 
 
 	bool IsLocallyReloading();
