@@ -63,6 +63,8 @@ ABlasterCharacter::ABlasterCharacter()
 	GetMesh()->SetCollisionObjectType(ECC_SkeletalMesh);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+	// ue5.1에서는 클라이언트 캐릭터가 서버 뷰에 없을 때 캐릭터의 뼈대 이동이 업데이트되지 않아 총구 위치가 올바르지 않다는 것을 발견했습니다.
+	GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	GetCharacterMovement()->RotationRate = FRotator(0.0, 0.0, 850.0);
 
 	TurningInPlace = ETurningInPlace::ETIP_NotTurning;
@@ -80,93 +82,86 @@ ABlasterCharacter::ABlasterCharacter()
 	// FName은 대소문자 구분하지 않기 때문에 형식?구조만 맞게쓰면 된다.
 	Head = CreateDefaultSubobject<UBoxComponent>(TEXT("HeadBoxComponent"));
 	Head->SetupAttachment(GetMesh(), FName("Head"));
-	Head->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("Head"), Head);
 
 	Pelvis = CreateDefaultSubobject<UBoxComponent>(TEXT("PelvisBoxComponent"));
 	Pelvis->SetupAttachment(GetMesh(), FName("Pelvis"));
-	Pelvis->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("Pelvis"), Pelvis);
 
 	Spine_02 = CreateDefaultSubobject<UBoxComponent>(TEXT("Spine02"));
 	Spine_02->SetupAttachment(GetMesh(), FName("spine_02"));
-	Spine_02->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("spine_02"), Spine_02);
 
 	Spine_03 = CreateDefaultSubobject<UBoxComponent>(TEXT("Spine03"));
 	Spine_03->SetupAttachment(GetMesh(), FName("spine_03"));
-	Spine_03->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("spine_03"), Spine_03);
 
 	UpperArm_L = CreateDefaultSubobject<UBoxComponent>(TEXT("UpperArm_L"));
 	UpperArm_L->SetupAttachment(GetMesh(), FName("UpperArm_L"));
-	UpperArm_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("UpperArm_L"), UpperArm_L);
 
 	UpperArm_R = CreateDefaultSubobject<UBoxComponent>(TEXT("UpperArm_R"));
 	UpperArm_R->SetupAttachment(GetMesh(), FName("UpperArm_R"));
-	UpperArm_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("UpperArm_R"), UpperArm_R);
 
 	LowerArm_L = CreateDefaultSubobject<UBoxComponent>(TEXT("LowerArm_L"));
 	LowerArm_L->SetupAttachment(GetMesh(), FName("LowerArm_L"));
-	LowerArm_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("LowerArm_L"), LowerArm_L);
 
 	LowerArm_R = CreateDefaultSubobject<UBoxComponent>(TEXT("LowerArm_R"));
 	LowerArm_R->SetupAttachment(GetMesh(), FName("LowerArm_R"));
-	LowerArm_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("LowerArm_R"), LowerArm_R);
 
 	Hand_L = CreateDefaultSubobject<UBoxComponent>(TEXT("Hand_L"));
 	Hand_L->SetupAttachment(GetMesh(), FName("Hand_L"));
-	Hand_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("Hand_L"), Hand_L);
 
 	Hand_R = CreateDefaultSubobject<UBoxComponent>(TEXT("Hand_R"));
 	Hand_R->SetupAttachment(GetMesh(), FName("Hand_R"));
-	Hand_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("Hand_R"), Hand_R);
 
 	BackpackBottom = CreateDefaultSubobject<UBoxComponent>(TEXT("BackpackBottom"));
 	BackpackBottom->SetupAttachment(GetMesh(), FName("BackpackBottom"));
-	BackpackBottom->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("BackpackBottom"), BackpackBottom);
 
 	BackpackTop = CreateDefaultSubobject<UBoxComponent>(TEXT("BackpackTop"));
 	BackpackTop->SetupAttachment(GetMesh(), FName("BackpackTop"));
-	BackpackTop->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("BackpackTop"), BackpackTop);
 
 	Thigh_L = CreateDefaultSubobject<UBoxComponent>(TEXT("Thigh_L"));
 	Thigh_L->SetupAttachment(GetMesh(), FName("Thigh_L"));
-	Thigh_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("Thigh_L"), Thigh_L);
 
 	Thigh_R = CreateDefaultSubobject<UBoxComponent>(TEXT("Thigh_R"));
 	Thigh_R->SetupAttachment(GetMesh(), FName("Thigh_R"));
-	Thigh_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("Thigh_R"), Thigh_R);
 
 	Calf_L = CreateDefaultSubobject<UBoxComponent>(TEXT("Calf_L"));
 	Calf_L->SetupAttachment(GetMesh(), FName("Calf_L"));
-	Calf_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("Calf_L"), Calf_L);
 
 	Calf_R = CreateDefaultSubobject<UBoxComponent>(TEXT("Calf_R"));
 	Calf_R->SetupAttachment(GetMesh(), FName("Calf_R"));
-	Calf_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("Calf_R"), Calf_R);
 
 	Foot_L = CreateDefaultSubobject<UBoxComponent>(TEXT("Foot_L"));
 	Foot_L->SetupAttachment(GetMesh(), FName("Foot_L"));
-	Foot_L->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("Foot_L"), Foot_L);
 
 	Foot_R = CreateDefaultSubobject<UBoxComponent>(TEXT("Foot_R"));
 	Foot_R->SetupAttachment(GetMesh(), FName("Foot_R"));
-	Foot_R->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	HitCollisionBoxes.Add(FName("Foot_R"), Foot_R);
+
+	for (auto Box : HitCollisionBoxes)
+	{
+		if (Box.Value)
+		{
+			Box.Value->SetCollisionObjectType(ECC_HitBox);
+			Box.Value->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+			Box.Value->SetCollisionResponseToChannel(ECC_HitBox, ECollisionResponse::ECR_Block);
+			Box.Value->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		}
+	}
 
 
 	LocalPlayerName = FString(TEXT("Player"));
@@ -447,6 +442,15 @@ void ABlasterCharacter::PlayThrowGrenadeMontage()
 	}
 }
 
+void ABlasterCharacter::PlaySwapMontage()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && SwapMontage)
+	{
+		AnimInstance->Montage_Play(SwapMontage);
+	}
+}
+
 void ABlasterCharacter::PlayHitReactMontage()
 {
 	if (Combat == nullptr || Combat->EquippedWeapon == nullptr)
@@ -558,7 +562,20 @@ void ABlasterCharacter::EquipButtonPressed()
 	// HasAuthority = 서버만 호출 가능
 	if (Combat)
 	{
-		ServerEquipButtonPressed();
+		if (Combat->CombatState == ECombatState::ECS_Unoccupied)
+			ServerEquipButtonPressed();
+		
+		// 위의 서버 RPC내부 함수에서 아래의 두 코드를 실행하고 있기 때문에
+		// 서버가 아닐경우에만 실행해야한다.
+		bool bSwap = Combat->ShouldSwapWeapons() && !HasAuthority() &&
+			Combat->CombatState == ECombatState::ECS_Unoccupied &&
+			OverlappingWeapon == nullptr;
+		if (bSwap)
+		{
+			PlaySwapMontage();
+			Combat->CombatState = ECombatState::ECS_SwappingWeapons;
+			bFinishedSwapping = false;
+		}
 	}
 }
 
@@ -901,6 +918,15 @@ void ABlasterCharacter::SpawnDefaultWeapon()
 	if (BlasterGameMode && World && !bElimmed && DefaultWeaponClass)
 	{
 		AWeapon* StartingWeapon =  World->SpawnActor<AWeapon>(DefaultWeaponClass);
+
+		if (HasAuthority())
+		{
+			StartingWeapon->SetUseServerSideRewind(false);
+		}
+		else
+		{
+			StartingWeapon->SetUseServerSideRewind(true);
+		}
 		StartingWeapon->bDestroyWeapon = true;
 
 		if (Combat)

@@ -10,6 +10,8 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "WeaponTypes.h"
+#include "../Component/LagCompensationComponent.h"
+#include "../PlayerController/BlasterPlayerController.h"
 
 void AHitScanWeapon::Fire(const FVector& HitTarget)
 {
@@ -65,20 +67,44 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 			);
 		}
 
-		if (!FireHit.bBlockingHit)
-			return;
+		/*if (!FireHit.bBlockingHit)
+			return;*/
 
 		// 타깃 액터에게 데미지 줌
 		// 데미지는 서버에서만 발생해야함
-		if (BlasterCharacter && HasAuthority() && InstigatorController)
+		if (BlasterCharacter && InstigatorController)
 		{
-			UGameplayStatics::ApplyDamage(
-				BlasterCharacter,
-				Damage,
-				InstigatorController,
-				this,
-				UDamageType::StaticClass()
-			);
+			bool bCauseAuthDamage = !bUseServerSideRewind || OwnerPawn->IsLocallyControlled();
+			if (HasAuthority() && bCauseAuthDamage)
+			{
+				UGameplayStatics::ApplyDamage(
+					BlasterCharacter,
+					Damage,
+					InstigatorController,
+					this,
+					UDamageType::StaticClass()
+				);
+			}
+			if (!HasAuthority() && bUseServerSideRewind)
+			{
+				BlasterOwnerCharacter = BlasterOwnerCharacter == nullptr ? Cast<ABlasterCharacter>(OwnerPawn) : BlasterOwnerCharacter;
+				BlasterOwnerController = BlasterOwnerController == nullptr ? Cast<ABlasterPlayerController>(InstigatorController) : BlasterOwnerController;
+
+				if (BlasterOwnerCharacter && BlasterOwnerController &&
+					BlasterOwnerCharacter->GetLagCompensationComponent() &&
+					BlasterOwnerCharacter->IsLocallyControlled())
+				{
+					BlasterOwnerCharacter->GetLagCompensationComponent()->ServerScoreRequest
+					(BlasterCharacter,
+						Start,
+						HitTarget,
+						// 서버 시간에서 서버까지 보내는 시간을 빼서 보내야한다 그래야 서버에서 적용할때는 기존의 시간으로 적용 가능
+						BlasterOwnerController->GetServerTime() - BlasterOwnerController->GetSingleTripTime(),
+						this
+					);
+				}
+			}
+
 		}
 		// 충돌지점에 파티클 임펙트 생성
 		if (ImpactParticles)

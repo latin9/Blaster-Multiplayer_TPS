@@ -94,7 +94,11 @@ void UBlasterAnimInstance::NativeUpdateAnimation(float DeltaTime)
 
 		// 리로딩할때는 FABRIK을 사용하면 안된다
 		bUseFABRIK = BlasterCharacter->GetCombatState() == ECombatState::ECS_Unoccupied;
-		if (BlasterCharacter->IsLocallyControlled() && BlasterCharacter->GetCombatState() != ECombatState::ECS_ThrowingGrenade)
+
+		bool bFABRIKOverride = BlasterCharacter->IsLocallyControlled() &&
+			BlasterCharacter->GetCombatState() != ECombatState::ECS_ThrowingGrenade && 
+			BlasterCharacter->IsSwappingFinished();
+		if (bFABRIKOverride)
 		{
 			bUseFABRIK = !BlasterCharacter->IsLocallyReloading();
 		}

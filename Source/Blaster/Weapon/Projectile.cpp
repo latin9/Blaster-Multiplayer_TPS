@@ -64,7 +64,7 @@ void AProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimi
 	// 서버에서 복제된 액터를 파괴하는 행위는 모든 클라이언트에 전달된다.
 	// 위가 원래의 방법인데 클라에서 벽에 가깝거나 바닥에 쏘면 소리가 안들리고 파티클이 안 보여서
 	// Multicast RPC를 사용하여 처리하였다.
-	ServerDestroyFunc();
+	//ServerDestroyFunc();
 
 	Destroy();
 }
@@ -97,7 +97,7 @@ void AProjectile::StartDestroyTimer()
 
 void AProjectile::DestroyTimerFinished()
 {
-	ServerDestroyFunc();
+	//ServerDestroyFunc();
 	Destroy();
 }
 
@@ -136,6 +136,14 @@ void AProjectile::Tick(float DeltaTime)
 void AProjectile::Destroyed()
 {
 	Super::Destroyed();
+	if (ImpactParticles)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
+	}
+	if (ImpactSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+	}
 }
 
 void AProjectile::ServerDestroyFunc_Implementation()

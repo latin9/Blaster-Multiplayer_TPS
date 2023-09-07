@@ -118,11 +118,6 @@ private:
 	// 즉 Sequence는 탄약이 아직 우리?에게 다시 복제되지 않은 데 소비한 라운드 수를 나타낸다?
 	int32 Sequence = 0;
 
-	UPROPERTY()
-	class ABlasterCharacter* BlasterOwnerCharacter;
-
-	UPROPERTY()
-	class ABlasterPlayerController* BlasterOwnerController;
 
 	UPROPERTY(EditAnywhere)
 	EWeaponType WeaponType;
@@ -132,6 +127,11 @@ private:
 	bool bUseScatter = false;
 
 protected:
+	UPROPERTY()
+	class ABlasterCharacter* BlasterOwnerCharacter;
+
+	UPROPERTY()
+	class ABlasterPlayerController* BlasterOwnerController;
 	// Trace end with scatter
 	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
 	float DistanceToSphere = 800.f;
@@ -139,7 +139,15 @@ protected:
 	// 분산 시스템에 사용할 구체 반지름
 	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
 	float SphereRadius = 75.f;
+	
+	UPROPERTY(EditAnywhere)
+	float Damage = 20.f;
 
+	UPROPERTY(Replicated, EditAnywhere)
+	bool bUseServerSideRewind = false;
+
+	UFUNCTION()
+	void OnPingTooHigh(bool bPingTooHigh);
 public:
 	UPROPERTY(EditAnywhere)
 	EFireType FireType;
@@ -187,5 +195,7 @@ public:
 	FORCEINLINE int32 GetAmmo() const { return Ammo; }
 	FORCEINLINE int32 GetMagCapacity() const { return MagCapacity; }
 	FORCEINLINE bool GetUseScatter() const { return bUseScatter; }
+	FORCEINLINE float GetDamage() const { return Damage; }
+	FORCEINLINE void SetUseServerSideRewind(bool _Enable) { bUseServerSideRewind = _Enable; }
 
 };

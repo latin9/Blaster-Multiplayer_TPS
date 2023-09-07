@@ -143,6 +143,33 @@ void UCombatComponent::OnRep_SecondaryWeapon()
 		PlayEquipWeaponSound(SecondaryWeapon);
 	}
 }
+void UCombatComponent::FinishSwap()
+{
+	if (Character && Character->HasAuthority())
+	{
+		CombatState = ECombatState::ECS_Unoccupied;
+	}
+	if(Character)
+		Character->SetSwappingFinished(true);
+	
+}
+
+
+void UCombatComponent::FinishSwapAttachWeapons()
+{
+	AWeapon* TempWeapon = EquippedWeapon;
+	EquippedWeapon = SecondaryWeapon;
+	SecondaryWeapon = TempWeapon;
+
+	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+	AttachActorToRightHand(EquippedWeapon);
+	EquippedWeapon->SetHUDAmmo();
+	UpdateCarriedAmmo();
+	PlayEquipWeaponSound(EquippedWeapon);
+
+	SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
+	AttachActorToBackpack(SecondaryWeapon);
+}
 
 void UCombatComponent::FireButtonPressed(bool bPressed)
 {
@@ -363,6 +390,7 @@ void UCombatComponent::MulticastShotgunFire_Implementation(const TArray<FVector_
 	ShotgunLocalFire(TraceHitTargets);
 }
 
+
 void UCombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
 {
 	FVector2D ViewportSize;
@@ -548,12 +576,12 @@ bool UCombatComponent::CanFire()
 {
 	if (EquippedWeapon == nullptr)
 		return false;
-	// 로컬 리로드로 패브릭 제어
-	if (bLocallyReloading)
-		return false;
 	// 샷건의 리로드중 쏠 수 있게 하기위함
 	if (!EquippedWeapon->IsAmmoEmpty() && bCanFire && CombatState == ECombatState::ECS_Reloading && EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Shotgun)
 		return true;
+	// 로컬 리로드로 패브릭 제어
+	if (bLocallyReloading)
+		return false;
 
 	// 무기의 탄약개수가 0이 아니고 bCanFire이 false라면
 	return !EquippedWeapon->IsAmmoEmpty() && bCanFire && CombatState == ECombatState::ECS_Unoccupied;
@@ -634,21 +662,12 @@ void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 
 void UCombatComponent::SwapWeapons()
 {
-	if (CombatState != ECombatState::ECS_Unoccupied)
+	if (CombatState != ECombatState::ECS_Unoccupied || Character == nullptr)
 		return;
 
-	AWeapon* TempWeapon = EquippedWeapon;
-	EquippedWeapon = SecondaryWeapon;
-	SecondaryWeapon = TempWeapon;
-
-	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
-	AttachActorToRightHand(EquippedWeapon);
-	EquippedWeapon->SetHUDAmmo();
-	UpdateCarriedAmmo();
-	PlayEquipWeaponSound(EquippedWeapon);
-
-	SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
-	AttachActorToBackpack(SecondaryWeapon);
+	Character->PlaySwapMontage();
+	Character->SetSwappingFinished(false);
+	CombatState = ECombatState::ECS_SwappingWeapons;
 }
 
 void UCombatComponent::EquipPrimaryWeapon(AWeapon* WeaponToEquip)
@@ -698,28 +717,69 @@ void UCombatComponent::Reload()
 		ServerReload();
 		HandleReload();
 		bLocallyReloading = true;
-		UE_LOG(LogTemp, Error, TEXT("Play Reload"));
+		//UE_LOG(LogTemp, Error, TEXT("Play Reload"));
 	}
 
 }
 
 void UCombatComponent::FinishReloading()
 {
+	if (!Character->HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("FinishReloading"));
+	}
+
+	LocalFinishReloading();
+	//ServerFinishReloading();
+}
+
+void UCombatComponent::ServerFinishReloading_Implementation()
+{
+	MulticastFinishReloading();
+}
+
+void UCombatComponent::MulticastFinishReloading_Implementation()
+{
+	if (Character && Character->IsLocallyControlled() && !Character->HasAuthority())
+		return;
+
+	LocalFinishReloading();
+}
+
+void UCombatComponent::LocalFinishReloading()
+{
 	if (Character == nullptr)
 		return;
+
 	bLocallyReloading = false;
+
 	if (Character->HasAuthority())
 	{
 		CombatState = ECombatState::ECS_Unoccupied;
-
 		// 총알 업데이트
 		UpdateAmmoValues();
 	}
+	
 	if (bFireButtonPressed)
 	{
-		Fire(); 
+		Fire();
 	}
 }
+
+//void UCombatComponent::ClientUpdateCarriedAmmo_Implementation(int32 ServerCarriedAmmo)
+//{
+//	if (Character->HasAuthority())
+//		return;
+//
+//	Controller = Controller == nullptr ? Cast<ABlasterPlayerController>(Character->Controller) : Controller;
+//
+//	CarriedAmmo = ServerCarriedAmmo;
+//
+//	if (Controller)
+//	{
+//		Controller->SetHUDCarriedAmmo(CarriedAmmo);
+//	}
+//}
 
 
 void UCombatComponent::ServerReload_Implementation()
@@ -753,12 +813,20 @@ void UCombatComponent::OnRep_CombatState()
 			HandleReload();
 		break;
 	case ECombatState::ECS_ThrowingGrenade:
+		// 다른 클라이언트에서만 실행되도록
 		// 로컬플레이어는 이미 ThrowGrenade 몽타주를 실행중이기 때문에 아닐때만 실행
 		if (Character && !Character->IsLocallyControlled())
 		{
 			Character->PlayThrowGrenadeMontage();
 			AttachActorToLeftHand(EquippedWeapon);
 			ShowAttachedGrenade(true);
+		}
+		break;
+	case ECombatState::ECS_SwappingWeapons:
+		// 다른 클라이언트에서만 실행되도록
+		if (Character && !Character->IsLocallyControlled())
+		{
+			Character->PlaySwapMontage();
 		}
 		break;
 	case ECombatState::ECS_MAX:
@@ -788,6 +856,10 @@ void UCombatComponent::UpdateAmmoValues()
 	{
 		Controller->SetHUDCarriedAmmo(CarriedAmmo);
 	}
+	/*if (Character->HasAuthority())
+	{
+		ClientUpdateCarriedAmmo(CarriedAmmo);
+	}*/
 	// 무기의 총알 갱신
 	EquippedWeapon->AddAmmo(ReloadAmount);
 }

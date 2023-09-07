@@ -33,6 +33,23 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void FinishReloading();
 
+	UFUNCTION(Server, Reliable)
+	void ServerFinishReloading();
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastFinishReloading();
+
+	void LocalFinishReloading();
+	
+	/*UFUNCTION(Client, Reliable)
+	void ClientUpdateCarriedAmmo(int32 ServerCarriedmmo);*/
+
+	UFUNCTION(BlueprintCallable)
+	void FinishSwap();
+
+	UFUNCTION(BlueprintCallable)
+	void FinishSwapAttachWeapons();
+
 	void FireButtonPressed(bool bPressed);
 
 	UFUNCTION(BlueprintCallable)

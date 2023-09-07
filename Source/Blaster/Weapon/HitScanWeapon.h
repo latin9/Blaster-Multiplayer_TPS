@@ -28,11 +28,6 @@ protected:
 	UPROPERTY(EditAnywhere)
 	class USoundCue* HitSound;
 	
-	// 기본적으로 데미지는 발사체가 갖고있는 부분이지만
-	// HitScaneWeapon은 발사체가 아닌 라인트레이스로 데미지를 주는 형식이기 때문에
-	// 따로 데미지를 갖고있는것
-	UPROPERTY(EditAnywhere)
-	float Damage = 20.f;
 private:
 
 	UPROPERTY(EditAnywhere)

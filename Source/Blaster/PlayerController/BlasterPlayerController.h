@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "BlasterPlayerController.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHighPingDelegate, bool, bPingTooHigh);
 /**
  * 
  */
@@ -38,7 +39,8 @@ public:
 	virtual void ReceivedPlayer() override;
 	void HandleMatchHasStarted();
 	void HandleCooldown();
-
+	
+	FHighPingDelegate HighPingDelegate;
 protected:
 	void SetHUDTime();
 
@@ -127,7 +129,15 @@ private:
 	UPROPERTY(EditAnywhere)
 	float CheckPingFrequency = 20.f;
 
+	UFUNCTION(Server, Reliable)
+	void ServerReportPingStatus(bool bHighPing);
+
 	// 하이핑 임계값
 	UPROPERTY(EditAnywhere)
 	float HightPingThreshold = 50.f;
+
+	float SingleTripTime = 0.f;
+
+public:
+	FORCEINLINE float GetSingleTripTime() const { return SingleTripTime; }
 };

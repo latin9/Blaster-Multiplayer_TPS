@@ -21,6 +21,27 @@ AProjectileGrenade::AProjectileGrenade()
 	ProjectileMovementComponent->bShouldBounce = true;
 }
 
+#if WITH_EDITOR
+void AProjectileGrenade::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	// 변경된 프로퍼티의 이름을 가져온다.
+	FName PropertyName = PropertyChangedEvent.Property != nullptr ? PropertyChangedEvent.Property->GetFName() : NAME_None;
+
+	// 변경된 프로퍼티에 따라 작업을 수행
+	if (PropertyName == GET_MEMBER_NAME_CHECKED(AProjectileGrenade, InitialSpeed))
+	{
+		if (ProjectileMovementComponent)
+		{
+			// InitialSpeed를 에디터에서 수정하면 자동으로 ProjectileMovementComponent->InitialSpeed, MaxSpeed 값 둘다 변경이 된다.
+			ProjectileMovementComponent->InitialSpeed = InitialSpeed;
+			ProjectileMovementComponent->MaxSpeed = InitialSpeed;
+		}
+	}
+}
+#endif
+
 void AProjectileGrenade::BeginPlay()
 {
 	// Actor BeginPlay를 호출하는 이유는 부모 클래스인 Projectile의 

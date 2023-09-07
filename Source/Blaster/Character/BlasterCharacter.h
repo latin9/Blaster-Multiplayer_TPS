@@ -25,6 +25,7 @@ public:
 	void PlayReloadMontage();
 	void PlayElimMontage();
 	void PlayThrowGrenadeMontage();
+	void PlaySwapMontage();
 	// 시뮬레이션 프록시에 대한 캐릭터 회전의 델타를 확인할 때 틱 기능 대신 이것을 사용
 	virtual void OnRep_ReplicatedMovement() override;
 
@@ -154,6 +155,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = Combat)
 	class UAnimMontage* ThrowGrenadeMontage;
+
+	UPROPERTY(EditAnywhere, Category = Combat)
+	class UAnimMontage* SwapMontage;
 
 	void HideCameraIfCharacterClose();
 	UPROPERTY(EditAnywhere)
@@ -300,6 +304,8 @@ private:
 	UPROPERTY()
 	TMap<FName, class UBoxComponent*> HitCollisionBoxes;
 
+	bool bFinishedSwapping = false;
+
 public:
 	void SetOverlappingWeapon(AWeapon* Weapon);
 	bool IsWeaponEquipped();
@@ -348,6 +354,8 @@ public:
 	FORCEINLINE class UBoxComponent* GetFootRComponent() const { return Foot_R; }
 	FORCEINLINE TMap<FName, class UBoxComponent*> GetHitColisionBoxes() const { return HitCollisionBoxes; }
 	FORCEINLINE class ULagCompensationComponent* GetLagCompensationComponent() const { return LagCompensation; }
+	FORCEINLINE bool IsSwappingFinished() const { return bFinishedSwapping; }
+	FORCEINLINE void SetSwappingFinished(bool _IsFinished) { bFinishedSwapping = _IsFinished; }
 	class UBoxComponent* GetHitColisionBoxFromFName(const FName& Name);
 
 
