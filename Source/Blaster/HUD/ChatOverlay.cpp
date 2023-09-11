@@ -22,7 +22,7 @@ void UChatOverlay::NativeConstruct()
 void UChatOverlay::AddChatText(const FString& Text)
 {
 	UTextBlock* NewTextBlock = NewObject<UTextBlock>(ChatHistoryBox);
-	float FontSize = NewTextBlock->Font.Size;	 // 폰트 크기
+	float FontSize = NewTextBlock->GetFont().Size;	 // 폰트 크기
 	UE_LOG(LogTemp, Warning, TEXT("FontSize : %d"), FontSize);
 
 	UCanvasPanelSlot* HistoryBoxSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(ChatVerticalBox);
@@ -34,6 +34,8 @@ void UChatOverlay::AddChatText(const FString& Text)
 
 	float HistoryBoxSizeX = HistoryBoxSlot->GetSize().X;
 
+	// 텍스트는 HistoryBox의 크기만큼만 보여지게 된다 그래서
+	// HistoryBox크기에 따라 자동으로 개행하도록 개행해야할 Index(Count)를 구해주는것
 	// +1은 짤리는거 방지용 여유를 두는것
 	int32 NewlineCount = HistoryBoxSizeX / FontSize + 1;
 
@@ -66,6 +68,7 @@ void UChatOverlay::OnChatTextCommitted(const FText& Text, ETextCommit::Type Comm
 	case ETextCommit::OnUserMovedFocus:
 		break;
 	case ETextCommit::OnCleared:
+		ChatInputText->SetFocus();
 		break;
 	}
 }

@@ -17,6 +17,7 @@
 #include "Components/Image.h"
 #include "../HUD/ReturnToMainMenu.h"
 #include "../HUD/ChatOverlay.h"
+#include "Components/EditableTextBox.h"
 
 void ABlasterPlayerController::BeginPlay()
 {
@@ -127,13 +128,15 @@ void ABlasterPlayerController::ChageUIMode()
 	bUIOnlyModeEnable = !bUIOnlyModeEnable;
 	BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
 
-	if (bUIOnlyModeEnable)
+	if (bUIOnlyModeEnable && BlasterHUD->GetChatOverlay()->GetVisibility() == ESlateVisibility::Hidden)
 	{
 		SetInputMode(FInputModeGameAndUI());
 		SetShowMouseCursor(true);
 		BlasterHUD->GetChatOverlay()->SetVisibility(ESlateVisibility::Visible);
+		BlasterHUD->GetChatOverlay()->GetChatInputText()->SetFocus();
 	}
-	else
+	else if(BlasterHUD->GetChatOverlay()->GetChatInputText()->Text.IsEmpty() && 
+		BlasterHUD->GetChatOverlay()->GetVisibility() == ESlateVisibility::Visible)
 	{
 		SetInputMode(FInputModeGameOnly());
 		SetShowMouseCursor(false);

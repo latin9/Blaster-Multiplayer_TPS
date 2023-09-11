@@ -39,5 +39,9 @@ private:
 
 	void SetInputText(const FText& Text);
 
+	// LineLength에따라 개행
 	FString InsertNewMessage(const FString& InputString, int32 LineLength);
+
+public:
+	FORCEINLINE class UEditableTextBox* GetChatInputText() const { return ChatInputText; }
 };
