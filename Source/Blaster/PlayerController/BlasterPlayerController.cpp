@@ -15,6 +15,8 @@
 #include "../GameState/BlasterGameState.h"
 #include "../PlayerState/BlasterPlayerState.h"
 #include "Components/Image.h"
+#include "../HUD/ReturnToMainMenu.h"
+#include "../HUD/ChatOverlay.h"
 
 void ABlasterPlayerController::BeginPlay()
 {
@@ -23,6 +25,17 @@ void ABlasterPlayerController::BeginPlay()
 	BlasterHUD = GetHUD<ABlasterHUD>();
 	
 	ServerCheckMatchState();
+}
+
+void ABlasterPlayerController::SetupInputComponent()
+{
+	Super::SetupInputComponent();
+
+	if (InputComponent == nullptr)
+		return;
+
+	InputComponent->BindAction(TEXT("Quit"), IE_Pressed, this, &ABlasterPlayerController::ShowReturnToMainMenu);
+	InputComponent->BindAction(TEXT("UIMode"), IE_Pressed, this, &ABlasterPlayerController::ChageUIMode);
 }
 
 void ABlasterPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -52,7 +65,7 @@ void ABlasterPlayerController::CheckPing(float DeltaTime)
 
 		if (PlayerState)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("PlayerState->GetCompressedPing() * 4 : %d"), PlayerState->GetCompressedPing() * 4);
+			//UE_LOG(LogTemp, Warning, TEXT("PlayerState->GetCompressedPing() * 4 : %d"), PlayerState->GetCompressedPing() * 4);
 			// 언리얼 엔진의 GetCompressedPing함수는 핑을 계산하고 그 핑을 4로 나누어 uint8로 압축한다.
 			// 그래서 진정한 핑을 얻으려면 4를 곱해야한다.
 			// 단 GetPingInMilliseconds함수는 핑 그자체 원본을 갖고온다.
@@ -85,6 +98,49 @@ void ABlasterPlayerController::CheckPing(float DeltaTime)
 		}
 	}
 }
+
+void ABlasterPlayerController::ShowReturnToMainMenu()
+{
+	if (ReturnToMainMenuWidget == nullptr)
+		return;
+
+	if (ReturnToMainMenu == nullptr)
+	{
+		ReturnToMainMenu = CreateWidget<UReturnToMainMenu>(this, ReturnToMainMenuWidget);
+	}
+	if (ReturnToMainMenu)
+	{
+		bReturnToMainMenuOpen = !bReturnToMainMenuOpen;
+		if (bReturnToMainMenuOpen)
+		{
+			ReturnToMainMenu->MenuSetup();
+		}
+		else
+		{
+			ReturnToMainMenu->MenuTearDown();
+		}
+	}
+}
+
+void ABlasterPlayerController::ChageUIMode()
+{
+	bUIOnlyModeEnable = !bUIOnlyModeEnable;
+	BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
+
+	if (bUIOnlyModeEnable)
+	{
+		SetInputMode(FInputModeGameAndUI());
+		SetShowMouseCursor(true);
+		BlasterHUD->GetChatOverlay()->SetVisibility(ESlateVisibility::Visible);
+	}
+	else
+	{
+		SetInputMode(FInputModeGameOnly());
+		SetShowMouseCursor(false);
+		BlasterHUD->GetChatOverlay()->SetVisibility(ESlateVisibility::Hidden);
+	}
+}
+
 
 // 핑이 높다면?
 void ABlasterPlayerController::ServerReportPingStatus_Implementation(bool bHighPing)
@@ -369,6 +425,75 @@ void ABlasterPlayerController::SetHUDGrenades(int32 Grenades)
 	}
 }
 
+void ABlasterPlayerController::BroadcastElim(APlayerState* Attacker, APlayerState* Victim)
+{
+	//ClientElimAnnouncement(Attacker, Victim);
+	if (Attacker && Victim)
+	{
+		BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
+
+		if (BlasterHUD)
+		{
+			BlasterHUD->AddElimAnnouncement(Attacker->GetPlayerName(), Victim->GetPlayerName());
+		}
+	}
+}
+
+void ABlasterPlayerController::SendMessage(const FText& Message)
+{
+	// 메세지 앞에 플레이어 이름을 넣어야한다.
+
+	PlayerState = PlayerState == nullptr ? GetPlayerState<APlayerState>() : PlayerState;
+
+	if (PlayerState)
+	{
+		FString UserName = PlayerState->GetPlayerName();
+		FString NewMessage = FString::Printf(TEXT("%s : %s"), *UserName, *Message.ToString());
+
+		ServerSendChatMessage(NewMessage);
+	}
+}
+
+void ABlasterPlayerController::ServerSendChatMessage_Implementation(const FString& Message)
+{
+	TArray<AActor*> OutActors;
+	UGameplayStatics::GetAllActorsOfClass(GetPawn()->GetWorld(), APlayerController::StaticClass(), OutActors);
+
+	// 서버에서 모든 클라이언트에게 전달한다.
+	for (auto Actor : OutActors)
+	{
+		ABlasterPlayerController* PlayerController = Cast<ABlasterPlayerController>(Actor);
+
+		if (PlayerController)
+		{
+			PlayerController->ClientSendChatMessage(Message);
+		}
+	}
+}
+
+void ABlasterPlayerController::ClientSendChatMessage_Implementation(const FString& Message)
+{
+	BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
+
+	if (BlasterHUD && BlasterHUD->GetChatOverlay())
+	{
+		BlasterHUD->GetChatOverlay()->AddChatText(Message);
+	}
+}
+
+void ABlasterPlayerController::ClientElimAnnouncement_Implementation(APlayerState* Attacker, APlayerState* Victim)
+{
+	if (Attacker && Victim)
+	{
+		BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
+
+		if (BlasterHUD)
+		{
+			BlasterHUD->AddElimAnnouncement(Attacker->GetPlayerName(), Victim->GetPlayerName());
+		}
+	}
+}
+
 void ABlasterPlayerController::SetHUDTime()
 {
 	float TimeLeft = 0.f;
@@ -519,6 +644,13 @@ void ABlasterPlayerController::HandleMatchHasStarted()
 	{
 		if (BlasterHUD->GetCharacterOverlay() == nullptr)
 			BlasterHUD->AddCharacterOverlay();
+
+		if (BlasterHUD->GetChatOverlay() == nullptr)
+		{
+			BlasterHUD->AddChatOverlay();
+			BlasterHUD->GetChatOverlay()->SetVisibility(ESlateVisibility::Hidden);
+		}
+
 		// 매치가 시작되면 기존에 있던 Announcement Widget은 안보이게 설정
 		if (BlasterHUD->GetAnnouncement())
 		{

@@ -73,8 +73,10 @@ void AProjectileBullet::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor,
 		{
 			if (OwnerCharacter->HasAuthority() && !bUseServerSideRewind)
 			{
+				const float DamageToCause = Hit.BoneName.ToString() == FString("head") ? HeadShotDamage : Damage;
+
 				// Hit되게되면 플레이어의 ReceiveDamage 콜백 함수가 실행이 됨
-				UGameplayStatics::ApplyDamage(OtherActor, Damage, OwnerController, this,
+				UGameplayStatics::ApplyDamage(OtherActor, DamageToCause, OwnerController, this,
 					UDamageType::StaticClass());
 
 				// 발사체 파괴는 마지막이 되어야함 : 부모로 들어가서 발사체 파괴함

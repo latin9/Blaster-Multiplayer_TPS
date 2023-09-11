@@ -38,6 +38,7 @@ void AShotgun::FireShotgun(const TArray<FVector_NetQuantize>& HitTargets)
 		// 총알이 여러곳으로 퍼지기 때문에 여러 사람이 한 번에 맞을 수 있다.
 		// Key : 총알에 맞은사람, Value : 총알에 몇방 맞았는지
 		TMap<ABlasterCharacter*, uint32> HitMap;
+		TMap<ABlasterCharacter*, uint32> HeadShotHitMap;
 
 		for (FVector_NetQuantize HitTarget : HitTargets)
 		{
@@ -50,15 +51,21 @@ void AShotgun::FireShotgun(const TArray<FVector_NetQuantize>& HitTargets)
 			// 맞은 개수를 종합하여 한 번에 계산한다.
 			if (BlasterCharacter)
 			{
-				// 기존에 타격한 캐릭터가 있다면 해당 캐릭터의 HitCount 1증가
-				if (HitMap.Contains(BlasterCharacter))
+				const bool bHeadShot = FireHit.BoneName.ToString() == FString("head");
+				if (bHeadShot)
 				{
-					HitMap[BlasterCharacter]++;
+					if (HeadShotHitMap.Contains(BlasterCharacter))
+						HeadShotHitMap[BlasterCharacter]++;
+					else // 첫타격시
+						HeadShotHitMap.Emplace(BlasterCharacter, 1);
 				}
 				else
 				{
-					// 첫타격시
-					HitMap.Emplace(BlasterCharacter, 1);
+					// 기존에 타격한 캐릭터가 있다면 해당 캐릭터의 HitCount 1증가
+					if (HitMap.Contains(BlasterCharacter))
+						HitMap[BlasterCharacter]++;
+					else // 첫타격시
+						HitMap.Emplace(BlasterCharacter, 1);
 				}
 			}
 			// 충돌지점에 파티클 임펙트 생성
@@ -84,27 +91,56 @@ void AShotgun::FireShotgun(const TArray<FVector_NetQuantize>& HitTargets)
 			}
 		}
 		TArray<ABlasterCharacter*> HitCharacters;
-		// 모든 캐릭터에 대한 데미지
+
+		// 헤드샷 몸샷 전부 합산하기 위한 TMap변수
+		TMap<ABlasterCharacter*, float> DamageMap;
+		// 모든 캐릭터에 대한 바디샷 대미지
 		for (auto HitPair : HitMap)
 		{
-			if (HitPair.Key && InstigatorController)
+			if (HitPair.Key)
+			{
+				DamageMap.Emplace(HitPair.Key, HitPair.Value * Damage);
+
+				// AddUnique 기존 컨테이너에 동일한 엘리먼트가 존재할 경우 추가하지 않아 중복된 데이터가 컨테이너에 포함되지 않도록 한다.
+				HitCharacters.AddUnique(HitPair.Key);
+			}
+		}
+
+		// 모든 캐릭터에 대한 헤드샷 대미지
+		for (auto HeadShotHitPair : HeadShotHitMap)
+		{
+			if (HeadShotHitPair.Key)
+			{
+				if (DamageMap.Contains(HeadShotHitPair.Key))
+					DamageMap[HeadShotHitPair.Key] += HeadShotHitPair.Value * HeadShotDamage;
+				else
+					DamageMap.Emplace(HeadShotHitPair.Key, HeadShotHitPair.Value * HeadShotDamage);
+
+				// AddUnique 기존 컨테이너에 동일한 엘리먼트가 존재할 경우 추가하지 않아 중복된 데이터가 컨테이너에 포함되지 않도록 한다.
+				HitCharacters.AddUnique(HeadShotHitPair.Key);
+			}
+		}
+
+		// 종합한 데미지 한 번에 ApplyDamage
+		for (auto DamagePair : DamageMap)
+		{
+			if (DamagePair.Key && InstigatorController)
 			{
 				bool bCauseAuthDamage = !bUseServerSideRewind || OwnerPawn->IsLocallyControlled();
 				if (HasAuthority() && bCauseAuthDamage)
 				{
 					// 각 플레이어마다 맞은 횟수만큼 데미지를 준다.
 					UGameplayStatics::ApplyDamage(
-						HitPair.Key,
-						Damage * HitPair.Value,
+						DamagePair.Key,
+						DamagePair.Value,
 						InstigatorController,
 						this,
 						UDamageType::StaticClass()
 					);
 				}
-				
-				HitCharacters.Add(HitPair.Key);
 			}
 		}
+
 		if (!HasAuthority() && bUseServerSideRewind)
 		{
 			BlasterOwnerCharacter = BlasterOwnerCharacter == nullptr ? Cast<ABlasterCharacter>(OwnerPawn) : BlasterOwnerCharacter;

@@ -280,7 +280,7 @@ void UCombatComponent::FireProjectileWeapon()
 		// 서버가 아닐때 실행해야한다 로컬은 이렇게 안 하면 서버는 총알두 발을 발사하게됨
 		if (!Character->HasAuthority())
 			LocalFire(HitTarget);
-		ServerFire(HitTarget);
+		ServerFire(HitTarget, EquippedWeapon->FireDelay);
 	}
 }
 
@@ -291,7 +291,7 @@ void UCombatComponent::FireHitScanWeapon()
 		HitTarget = EquippedWeapon->GetUseScatter() ? EquippedWeapon->TraceEndWithScatter(HitTarget) : HitTarget;
 		if (!Character->HasAuthority())
 			LocalFire(HitTarget);
-		ServerFire(HitTarget);
+		ServerFire(HitTarget, EquippedWeapon->FireDelay);
 	}
 }
 
@@ -306,7 +306,7 @@ void UCombatComponent::FireShotgun()
 			Shotgun->ShotgunTraceEndWithScatter(HitTarget, HitTargets);
 			if (!Character->HasAuthority())
 				ShotgunLocalFire(HitTargets);
-			ServerShotgunFire(HitTargets);
+			ServerShotgunFire(HitTargets, EquippedWeapon->FireDelay);
 		}
 	}
 
@@ -324,6 +324,7 @@ void UCombatComponent::LocalFire(const FVector_NetQuantize& TraceHitTarget)
 		EquippedWeapon->Fire(TraceHitTarget);
 	}
 }
+
 
 void UCombatComponent::ShotgunLocalFire(const TArray<FVector_NetQuantize>& TraceHitTargets)
 {
@@ -358,7 +359,7 @@ FVector_NetQuantize
 
 FVector_NetQuantize는 위치, 속도 등과 같은 게임 내에서 네트워크를 통해 자주 전송되는 벡터 값에 유용하게 사용될 수 있으며, 이러한 값을 전송할 때 발생하는 데이터 크기의 부하를 줄일 수 있습니다.
 */
-void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
+void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& TraceHitTarget, float FireDelay)
 {
 	// 서버에서 멀티케스트 RPC를 호출하면 서버에서 실행되고 모든 클라이언트에서 같이 실행된다.
 	MulticastFire(TraceHitTarget);
@@ -366,6 +367,17 @@ void UCombatComponent::ServerFire_Implementation(const FVector_NetQuantize& Trac
 	// 만약 MulticastFire 안에 있는 코드를 여기에 작성하고 실행하면
 	// 클라에서 총을 쏘면 총기 애니메이션 관련된 부분이 서버에서밖에 안 보인다
 	// 그래서 멀티케스트 RPC를 활용하여 전부 실행하게 하는것.
+}
+
+bool UCombatComponent::ServerFire_Validate(const FVector_NetQuantize& TraceHitTarget, float FireDelay)
+{
+	if (EquippedWeapon)
+	{
+		bool bNearlyEqual = FMath::IsNearlyEqual(EquippedWeapon->FireDelay, FireDelay, 0.001f);
+		return bNearlyEqual;
+	}
+
+	return true;
 }
 
 void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
@@ -377,9 +389,20 @@ void UCombatComponent::MulticastFire_Implementation(const FVector_NetQuantize& T
 	LocalFire(TraceHitTarget);
 }
 
-void UCombatComponent::ServerShotgunFire_Implementation(const TArray<FVector_NetQuantize>& TraceHitTargets)
+void UCombatComponent::ServerShotgunFire_Implementation(const TArray<FVector_NetQuantize>& TraceHitTargets, float FireDelay)
 {
 	MulticastShotgunFire(TraceHitTargets);
+}
+
+bool UCombatComponent::ServerShotgunFire_Validate(const TArray<FVector_NetQuantize>& TraceHitTarget, float FireDelay)
+{
+	if (EquippedWeapon)
+	{
+		bool bNearlyEqual = FMath::IsNearlyEqual(EquippedWeapon->FireDelay, FireDelay, 0.001f);
+		return bNearlyEqual;
+	}
+
+	return true;
 }
 
 void UCombatComponent::MulticastShotgunFire_Implementation(const TArray<FVector_NetQuantize>& TraceHitTargets)

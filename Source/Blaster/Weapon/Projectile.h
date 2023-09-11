@@ -35,7 +35,11 @@ protected:
 	void ExplodeDamage();
 
 protected:
+	UPROPERTY(EditAnywhere)
 	float Damage = 20.f;
+
+	UPROPERTY(EditAnywhere)
+	float HeadShotDamage = Damage * 2.f;
 
 	UPROPERTY(EditAnywhere)
 	class UBoxComponent* CollisionBox;
@@ -100,4 +104,5 @@ public:
 	FORCEINLINE float GetInitialSpeed() const { return InitialSpeed; }
 	FORCEINLINE float GetDamage() const { return Damage; }
 	FORCEINLINE void SetDamage(float _Damage) { Damage = _Damage; }
+	FORCEINLINE void SetHeadShotDamage(float _Damage) { HeadShotDamage = _Damage; }
 };

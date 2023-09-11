@@ -17,6 +17,8 @@ class BLASTER_API ABlasterPlayerController : public APlayerController
 	
 protected:
 	virtual void BeginPlay() override;
+	virtual void SetupInputComponent() override;
+
 
 public:
 	virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
@@ -41,6 +43,11 @@ public:
 	void HandleCooldown();
 	
 	FHighPingDelegate HighPingDelegate;
+
+	void BroadcastElim(APlayerState* Attacker, APlayerState* Victim);
+
+	void SendMessage(const FText& Message);
+
 protected:
 	void SetHUDTime();
 
@@ -76,6 +83,18 @@ protected:
 	void StopHighPingWarning();
 	void CheckPing(float DeltaTime);
 
+	void ShowReturnToMainMenu();
+	void ChageUIMode();
+	void FocusToChatWidgetAndChatting();
+
+	UFUNCTION(Client, Reliable)
+	void ClientElimAnnouncement(APlayerState* Attacker, APlayerState* Victim);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSendChatMessage(const FString& Message);
+
+	UFUNCTION(Client, Reliable)
+	void ClientSendChatMessage(const FString& Message);
 
 private:
 	UPROPERTY()
@@ -83,6 +102,14 @@ private:
 
 	UPROPERTY()
 	class ABlasterGameMode* BlasterGameMode;
+
+	UPROPERTY(EditAnywhere, Category = HUD)
+	TSubclassOf<class UUserWidget> ReturnToMainMenuWidget;
+
+	UPROPERTY()
+	class UReturnToMainMenu* ReturnToMainMenu;
+
+	bool bReturnToMainMenuOpen = false;
 
 	float LevelStartingTime = 0.f;
 	float MatchTime = 0.f;
@@ -137,6 +164,8 @@ private:
 	float HightPingThreshold = 50.f;
 
 	float SingleTripTime = 0.f;
+
+	bool bUIOnlyModeEnable = false;
 
 public:
 	FORCEINLINE float GetSingleTripTime() const { return SingleTripTime; }

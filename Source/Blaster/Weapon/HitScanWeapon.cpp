@@ -7,11 +7,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Sound/SoundCue.h"
-#include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "WeaponTypes.h"
 #include "../Component/LagCompensationComponent.h"
 #include "../PlayerController/BlasterPlayerController.h"
+//#include "DrawDebugHelpers.h"
 
 void AHitScanWeapon::Fire(const FVector& HitTarget)
 {
@@ -77,9 +77,11 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 			bool bCauseAuthDamage = !bUseServerSideRewind || OwnerPawn->IsLocallyControlled();
 			if (HasAuthority() && bCauseAuthDamage)
 			{
+				const float DamageToCause = FireHit.BoneName.ToString() == FString("head") ? HeadShotDamage : Damage;
+
 				UGameplayStatics::ApplyDamage(
 					BlasterCharacter,
-					Damage,
+					DamageToCause,
 					InstigatorController,
 					this,
 					UDamageType::StaticClass()
@@ -159,9 +161,9 @@ void AHitScanWeapon::WeaponTraceHit(const FVector& TraceStart, const FVector& Hi
 			OutHit.ImpactPoint = End;
 		}
 		FVector ToEndLoc = BeamEnd - TraceStart;
-		DrawDebugSphere(GetWorld(), BeamEnd, 16.f, 12, FColor::Red, true);
-		DrawDebugLine(GetWorld(), TraceStart, FVector(TraceStart + ToEndLoc * TRACE_LENGTH / ToEndLoc.Size()),
-			FColor::Cyan, true);
+		//DrawDebugSphere(GetWorld(), BeamEnd, 16.f, 12, FColor::Red, true);
+		//DrawDebugLine(GetWorld(), TraceStart, FVector(TraceStart + ToEndLoc * TRACE_LENGTH / ToEndLoc.Size()),
+		//	FColor::Cyan, true);
 		if (BeamParticles)
 		{
 			UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(

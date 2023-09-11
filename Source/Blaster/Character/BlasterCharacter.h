@@ -10,6 +10,8 @@
 #include "../BlasterType/CombatState.h"
 #include "BlasterCharacter.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLeftGame);
+
 UCLASS()
 class BLASTER_API ABlasterCharacter : public ACharacter, public IInteractWithCrosshairsInterface
 {
@@ -30,11 +32,11 @@ public:
 	virtual void OnRep_ReplicatedMovement() override;
 
 	// 게임 모드는 서버에만 존재하고 서버에서 Elim을 실행하기 때문에 여긴 서버에 해당
-	void Elim();
+	void Elim(bool bPlayerLeftGame);
 	// 죽는것은 신뢰해야됨 중요한작업
 	// 서버에서만 실행되면 안된다.
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastElim();
+	void MulticastElim(bool bPlayerLeftGame);
 	
 	/*UFUNCTION(Server, Reliable)
 	void ServerElimDestroyed();
@@ -54,6 +56,17 @@ public:
 	void UpdateHUDAmmo();
 
 	void SpawnDefaultWeapon();
+	
+	FOnLeftGame OnLeftGame;
+
+	UFUNCTION(Server, Reliable)
+	void ServerLeaveGame();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastGainedTheLead();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastLostTheLead();
 
 protected:
 	virtual void BeginPlay() override;
@@ -224,7 +237,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = Elim)
 	UMaterialInstance* DissolveMaterialInstance;
 
-	// Elimbot
+	// Elim Effect
 	UPROPERTY(EditAnywhere)
 	class UParticleSystem* ElimBotEffect;
 
@@ -233,6 +246,12 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	class USoundCue* ElimBotSound;
+
+	UPROPERTY(EditAnywhere)
+	class UNiagaraSystem* CrownSystem;
+
+	UPROPERTY()
+	class UNiagaraComponent* CrownComponent;
 
 	UPROPERTY()
 	class ABlasterPlayerState* BlasterPlayerState;
@@ -306,6 +325,9 @@ private:
 
 	bool bFinishedSwapping = false;
 
+	bool bLeftGame = false;
+
+
 public:
 	void SetOverlappingWeapon(AWeapon* Weapon);
 	bool IsWeaponEquipped();
@@ -357,6 +379,7 @@ public:
 	FORCEINLINE bool IsSwappingFinished() const { return bFinishedSwapping; }
 	FORCEINLINE void SetSwappingFinished(bool _IsFinished) { bFinishedSwapping = _IsFinished; }
 	class UBoxComponent* GetHitColisionBoxFromFName(const FName& Name);
+	//FORCEINLINE FOnLeftGame GetOnLeftGame() { return OnLeftGame; }
 
 
 	bool IsLocallyReloading();

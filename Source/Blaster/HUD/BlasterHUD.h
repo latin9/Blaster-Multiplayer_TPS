@@ -42,6 +42,8 @@ public:
 	virtual void DrawHUD() override;
 	void AddCharacterOverlay();
 	void AddAnnouncement();
+	void AddElimAnnouncement(FString Attacker, FString Victim);
+	void AddChatOverlay();
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Player Stats")
@@ -49,7 +51,13 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "AnnouncementClass")
 	TSubclassOf<class UUserWidget> AnnouncementClass;
+	
+	UPROPERTY(EditAnywhere, Category = "Chat")
+	TSubclassOf<class UUserWidget> ChatOverlayClass;
 private:
+	UPROPERTY()
+	class APlayerController* OwningPlayer;
+
 	FHUDPackage HUDPackage;
 
 	void DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter, FVector2D Spread, FLinearColor CrosshairColor);
@@ -62,8 +70,27 @@ private:
 	
 	UPROPERTY()
 	class UAnnouncement* Announcement;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class UElimAnnouncement> ElimAnnouncementClass;
+
+	UPROPERTY(EditAnywhere)
+	float ElimAnnouncementTime = 3.f;
+
+	UFUNCTION()
+	void ElimAnnouncementTimerFinished(class UElimAnnouncement* MsgToRemove);
+
+	UPROPERTY()
+	TArray<class UElimAnnouncement*> ElimMessages;
+
+	void ElimAnnouncementChangePos(class UCanvasPanelSlot* Slot);
+
+	UPROPERTY()
+	class UChatOverlay* ChatOverlay;
+
 public:
 	FORCEINLINE void SetHUDPackage(const FHUDPackage& Package) { HUDPackage = Package; }
-	FORCEINLINE UCharacterOverlay* GetCharacterOverlay() const { return CharacterOverlay; }
-	FORCEINLINE UAnnouncement* GetAnnouncement() const { return Announcement; }
+	FORCEINLINE class UCharacterOverlay* GetCharacterOverlay() const { return CharacterOverlay; }
+	FORCEINLINE class UAnnouncement* GetAnnouncement() const { return Announcement; }
+	FORCEINLINE class UChatOverlay* GetChatOverlay() const { return ChatOverlay; }
 };

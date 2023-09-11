@@ -38,6 +38,7 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 					SpawnedProjectile = World->SpawnActor<AProjectile>(ProjectileClass, SocketTransform.GetLocation(), TargetRotation, SpawnParams);
 					SpawnedProjectile->SetUseServerSideRewind(false);
 					SpawnedProjectile->SetDamage(Damage);
+					SpawnedProjectile->SetHeadShotDamage(HeadShotDamage);
 				}
 				else // 서버, 로컬로 제어되지 않음 - 복제되지 않은 발사체 생성, SSR 있음
 				{
@@ -70,6 +71,7 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
 				SpawnedProjectile = World->SpawnActor<AProjectile>(ProjectileClass, SocketTransform.GetLocation(), TargetRotation, SpawnParams);
 				SpawnedProjectile->SetUseServerSideRewind(false);
 				SpawnedProjectile->SetDamage(Damage);
+				SpawnedProjectile->SetHeadShotDamage(HeadShotDamage);
 			}
 		}
 	}

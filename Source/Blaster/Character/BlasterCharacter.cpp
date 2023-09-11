@@ -26,6 +26,9 @@
 #include "../Weapon/WeaponTypes.h"
 #include "Components/BoxComponent.h"
 #include "../Component/LagCompensationComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
+#include "../GameState/BlasterGameState.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -167,6 +170,38 @@ ABlasterCharacter::ABlasterCharacter()
 	LocalPlayerName = FString(TEXT("Player"));
 }
 
+void ABlasterCharacter::MulticastGainedTheLead_Implementation()
+{
+	if (CrownSystem == nullptr)
+		return;
+
+	if (CrownComponent == nullptr)
+	{
+		CrownComponent = UNiagaraFunctionLibrary::SpawnSystemAttached(
+			CrownSystem,
+			GetCapsuleComponent(),
+			FName(),
+			GetActorLocation() + FVector(0.f, 0.f, 110.f),
+			GetActorRotation(),
+			EAttachLocation::KeepWorldPosition,
+			false
+		);
+	}
+
+	if (CrownComponent)
+	{
+		CrownComponent->Activate();
+	}
+}
+
+void ABlasterCharacter::MulticastLostTheLead_Implementation()
+{
+	if (CrownComponent)
+	{
+		CrownComponent->DestroyComponent();
+	}
+}
+
 void ABlasterCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -187,6 +222,8 @@ void ABlasterCharacter::BeginPlay()
 	{
 		AttachedGrenade->SetVisibility(false);
 	}
+
+
 }
 
 void ABlasterCharacter::Tick(float DeltaTime)
@@ -240,18 +277,17 @@ void ABlasterCharacter::OnRep_ReplicatedMovement()
 	// 움직임을 복제했으니 0으로 설정
 	TimeSinceLastMovementReplication = 0.f;
 }
-void ABlasterCharacter::Elim()
+void ABlasterCharacter::Elim(bool bPlayerLeftGame)
 {
 	DropOrDestroyWeapons();
 	// 게임 모드는 서버에만 존재하고 서버에서 Elim을 실행하기 때문에 여긴 서버에 해당
-	MulticastElim();
-	// 부활 요청
-	GetWorldTimerManager().SetTimer(ElimTimer,
-		this, &ABlasterCharacter::ElimTimerFinished, ElimDelay);
+	MulticastElim(bPlayerLeftGame);
 }
 
-void ABlasterCharacter::MulticastElim_Implementation()
+void ABlasterCharacter::MulticastElim_Implementation(bool bPlayerLeftGame)
 {
+	bLeftGame = bPlayerLeftGame;
+
 	if (BlasterPlayerController)
 	{
 		BlasterPlayerController->SetHUDWeaponAmmo(0);
@@ -307,14 +343,36 @@ void ABlasterCharacter::MulticastElim_Implementation()
 	{
 		ShowSniperScopeWidget(false);
 	}
+
+	if (CrownComponent)
+	{
+		CrownComponent->DestroyComponent();
+	}
+	// 부활 요청
+	GetWorldTimerManager().SetTimer(ElimTimer,
+		this, &ABlasterCharacter::ElimTimerFinished, ElimDelay);
 }
 
 void ABlasterCharacter::ElimTimerFinished()
 {
 	ABlasterGameMode* BlasterGameMode = GetWorld()->GetAuthGameMode<ABlasterGameMode>();
-	if (BlasterGameMode)
+	if (BlasterGameMode && !bLeftGame)
 	{
 		BlasterGameMode->RequestRespawn(this, Controller);
+	}
+
+	if (bLeftGame && IsLocallyControlled())
+	{
+		OnLeftGame.Broadcast();
+	}
+}
+void ABlasterCharacter::ServerLeaveGame_Implementation()
+{
+	ABlasterGameMode* BlasterGameMode = GetWorld()->GetAuthGameMode<ABlasterGameMode>();
+	BlasterPlayerState = BlasterPlayerState == nullptr ? GetPlayerState<ABlasterPlayerState>() : BlasterPlayerState;
+	if (BlasterGameMode && BlasterPlayerState)
+	{
+		BlasterGameMode->PlayerLeftGame(BlasterPlayerState);
 	}
 }
 
@@ -859,7 +917,7 @@ void ABlasterCharacter::OnRep_Health(float LastHealth)
 
 	if (Health == 0.f)
 	{
-		MulticastElim();
+		MulticastElim(false);
 	}
 }
 
@@ -947,8 +1005,16 @@ void ABlasterCharacter::PollInit()
 			// 0을 넣어 갱신만 해준다.
 			BlasterPlayerState->AddToScore(0.f);
 			BlasterPlayerState->AddToDefeats(0);
+
+			ABlasterGameState* BlasterGameState = Cast<ABlasterGameState>(UGameplayStatics::GetGameState(this));
+
+			if (BlasterGameState && BlasterGameState->TopScoringPlayers.Contains(BlasterPlayerState))
+			{
+				MulticastGainedTheLead();
+			}
 		}
 	}
+
 }
 
 void ABlasterCharacter::RotateInPlace(float DeltaTime)
@@ -1027,6 +1093,7 @@ void ABlasterCharacter::StartDissolve()
 		DissolveTimeline->Play();
 	}
 }
+
 
 void ABlasterCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 {

@@ -5,10 +5,16 @@
 #include "GameFramework/PlayerController.h"
 #include "CharacterOverlay.h"
 #include "Announcement.h"
+#include "ElimAnnouncement.h"
+#include "ChatOverlay.h"
+#include "Components/HorizontalBox.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Blueprint/WidgetLayoutLibrary.h"
 
 void ABlasterHUD::BeginPlay()
 {
 	Super::BeginPlay();
+
 }
 
 void ABlasterHUD::AddCharacterOverlay()
@@ -32,6 +38,77 @@ void ABlasterHUD::AddAnnouncement()
 		// 캐릭터 오버레이 위젯 생성
 		Announcement = CreateWidget<UAnnouncement>(PlayerController, AnnouncementClass);
 		Announcement->AddToViewport();
+	}
+}
+
+void ABlasterHUD::AddElimAnnouncement(FString Attacker, FString Victim)
+{
+	OwningPlayer = OwningPlayer == nullptr ? GetOwningPlayerController() : OwningPlayer;
+
+	if (OwningPlayer && ElimAnnouncementClass)
+	{
+		UElimAnnouncement* ElimAnnouncementWidget = CreateWidget<UElimAnnouncement>(OwningPlayer, ElimAnnouncementClass);
+
+		if (ElimAnnouncementWidget)
+		{
+			ElimAnnouncementWidget->SetElimAnnouncementText(Attacker, Victim);
+			ElimAnnouncementWidget->AddToViewport();
+
+			// 기존에 출력되어있는 메시지가 있다면 위치를 옮긴다.
+			for (UElimAnnouncement* Msg: ElimMessages)
+			{
+				if (Msg && Msg->AnnouncementAttackerBox)
+				{
+					// UWidgetLayoutLibrary를 활용하여 해당 위젯의 위치를 알아낼 수 있다.
+					UCanvasPanelSlot* AttackCanvasSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(Msg->AnnouncementAttackerBox);
+					UCanvasPanelSlot* VictimCanvasSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(Msg->AnnouncementVictimBox);
+					ElimAnnouncementChangePos(AttackCanvasSlot);
+					ElimAnnouncementChangePos(VictimCanvasSlot);
+				}
+			}
+			ElimMessages.Add(ElimAnnouncementWidget);
+
+			FTimerHandle ElimMsgTimer;
+			FTimerDelegate ElimMsgDelegate;
+			ElimMsgDelegate.BindUFunction(this, FName("ElimAnnouncementTimerFinished"), ElimAnnouncementWidget);
+			GetWorldTimerManager().SetTimer(
+				ElimMsgTimer,
+				ElimMsgDelegate,
+				ElimAnnouncementTime,
+				false
+			);
+
+		}
+	}
+}
+
+void ABlasterHUD::AddChatOverlay()
+{
+	OwningPlayer = OwningPlayer == nullptr ? GetOwningPlayerController() : OwningPlayer;
+
+	if (OwningPlayer && ChatOverlayClass)
+	{
+		ChatOverlay = CreateWidget<UChatOverlay>(OwningPlayer, ChatOverlayClass);
+		if (ChatOverlay)
+			ChatOverlay->AddToViewport();
+	}
+}
+
+void ABlasterHUD::ElimAnnouncementTimerFinished(UElimAnnouncement* MsgToRemove)
+{
+	if (MsgToRemove)
+	{
+		MsgToRemove->RemoveFromParent();
+	}
+}
+
+void ABlasterHUD::ElimAnnouncementChangePos(UCanvasPanelSlot* Slot)
+{
+	if (Slot)
+	{
+		FVector2D Pos = Slot->GetPosition();
+		FVector2D NewPos(Pos.X, Pos.Y + Slot->GetSize().Y);
+		Slot->SetPosition(NewPos);
 	}
 }
 
