@@ -3,6 +3,7 @@
 
 #include "BlasterGameState.h"
 #include "../PlayerState/BlasterPlayerState.h"
+#include "../PlayerController/BlasterPlayerController.h"
 #include "Net/UnrealNetwork.h"
 
 void ABlasterGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -10,6 +11,8 @@ void ABlasterGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(ABlasterGameState, TopScoringPlayers);
+	DOREPLIFETIME(ABlasterGameState, RedTeamScore);
+	DOREPLIFETIME(ABlasterGameState, BlueTeamScore);
 }
 
 void ABlasterGameState::UpdateTopScore(ABlasterPlayerState* ScoringPlayer)
@@ -33,5 +36,49 @@ void ABlasterGameState::UpdateTopScore(ABlasterPlayerState* ScoringPlayer)
 		TopScoringPlayers.Empty();
 		TopScoringPlayers.Add(ScoringPlayer);
 		TopScore = ScoringPlayer->GetScore();
+	}
+}
+
+void ABlasterGameState::OnRep_RedTeamScore()
+{
+	ABlasterPlayerController* BlasterPlayerController = Cast<ABlasterPlayerController>(GetWorld()->GetFirstPlayerController());
+
+	if (BlasterPlayerController)
+	{
+		BlasterPlayerController->SetHUDRedTeamScore(RedTeamScore);
+	}
+}
+
+void ABlasterGameState::OnRep_BlueTeamScore()
+{
+	ABlasterPlayerController* BlasterPlayerController = Cast<ABlasterPlayerController>(GetWorld()->GetFirstPlayerController());
+
+	if (BlasterPlayerController)
+	{
+		BlasterPlayerController->SetHUDBlueTeamScore(BlueTeamScore);
+	}
+}
+
+void ABlasterGameState::AddRedTeamScores()
+{
+	++RedTeamScore;
+
+	ABlasterPlayerController* BlasterPlayerController = Cast<ABlasterPlayerController>(GetWorld()->GetFirstPlayerController());
+
+	if (BlasterPlayerController)
+	{
+		BlasterPlayerController->SetHUDRedTeamScore(RedTeamScore);
+	}
+}
+
+void ABlasterGameState::AddBlueTeamScores()
+{
+	++BlueTeamScore;
+
+	ABlasterPlayerController* BlasterPlayerController = Cast<ABlasterPlayerController>(GetWorld()->GetFirstPlayerController());
+
+	if (BlasterPlayerController)
+	{
+		BlasterPlayerController->SetHUDBlueTeamScore(BlueTeamScore);
 	}
 }

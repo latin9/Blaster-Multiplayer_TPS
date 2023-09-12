@@ -32,14 +32,14 @@ public:
 	void SetHUDAnnouncementCountdown(float CountdownTime);
 	void SetHUDGrenades(int32 Grenades);
 
-	void OnMatchStateSet(FName State);
+	void OnMatchStateSet(FName State, bool bTeamMatch = false);
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void Tick(float DeltaTime) override;
 	// 서버 월드 시간과 동기화
 	virtual float GetServerTime();
 	// 가능한 빨리 서버 월드 시간과 동기화
 	virtual void ReceivedPlayer() override;
-	void HandleMatchHasStarted();
+	void HandleMatchHasStarted(bool bTeamMatch = false);
 	void HandleCooldown();
 	
 	FHighPingDelegate HighPingDelegate;
@@ -47,6 +47,12 @@ public:
 	void BroadcastElim(APlayerState* Attacker, APlayerState* Victim);
 
 	void SendMessage(const FText& Message);
+
+	// 팀 관련
+	void HideTeamScores();
+	void InitTeamScores();
+	void SetHUDRedTeamScore(int32 RedScore);
+	void SetHUDBlueTeamScore(int32 BlueScore);
 
 protected:
 	void SetHUDTime();
@@ -84,7 +90,7 @@ protected:
 	void CheckPing(float DeltaTime);
 
 	void ShowReturnToMainMenu();
-	void ChageUIMode();
+	void ChangeUIMode();
 	void FocusToChatWidgetAndChatting();
 
 	UFUNCTION(Client, Reliable)
@@ -95,6 +101,12 @@ protected:
 
 	UFUNCTION(Client, Reliable)
 	void ClientSendChatMessage(const FString& Message);
+
+	UPROPERTY(ReplicatedUsing = OnRep_ShowTeamScores)
+	bool bShowTeamScores = false;
+
+	UFUNCTION()
+	void OnRep_ShowTeamScores();
 
 private:
 	UPROPERTY()
@@ -166,6 +178,10 @@ private:
 	float SingleTripTime = 0.f;
 
 	bool bUIOnlyModeEnable = false;
+
+	FString GetInfoText(const TArray<class ABlasterPlayerState*>& TopScorePlayerStates, class ABlasterPlayerState* BlasterPlayerState);
+
+	FString GetTeamsInfoText(class ABlasterGameState* BlasterGameState);
 
 public:
 	FORCEINLINE float GetSingleTripTime() const { return SingleTripTime; }

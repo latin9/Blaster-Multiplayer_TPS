@@ -48,6 +48,15 @@ public:
 	UPROPERTY(meta = (BindWidget))
 	class UImage* HighPingImage;
 
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* BlueTeamScore;
+
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* RedTeamScore;
+
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* ScoreSpacerText;
+
 	//Transient = 디스크에 직렬화되지 않음을 의미
 	UPROPERTY(meta = (BindWidgetAnim), Transient)
 	UWidgetAnimation* HighPingAnimation;

@@ -8,6 +8,7 @@
 #include "../Interfaces/InteractWithCrosshairsInterface.h"
 #include "Components/TimelineComponent.h"
 #include "../BlasterType/CombatState.h"
+#include "../BlasterType/Team.h"
 #include "BlasterCharacter.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLeftGame);
@@ -68,6 +69,8 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastLostTheLead();
 
+	void SetTeamColor(ETeam _Team);
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -106,6 +109,9 @@ public:
 protected:
 
 private:
+	UPROPERTY()
+	class ABlasterGameMode* BlasterGameMode;
+
 	UPROPERTY(Replicated)
 	bool bDisableGameplay = false;
 
@@ -236,6 +242,22 @@ private:
 	// 블루프린트에 설정된 머티리얼 인스턴스, 동적 미터리얼 인스턴스와 함께 사용
 	UPROPERTY(EditAnywhere, Category = Elim)
 	UMaterialInstance* DissolveMaterialInstance;
+
+	// Team Colors
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* BlueDissolveMatInstance;
+
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* BlueMaterial;
+	
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* RedDissolveMatInstance;
+
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* RedMaterial;
+	
+	UPROPERTY(EditAnywhere, Category = Elim)
+	UMaterialInstance* OriginalMaterial;
 
 	// Elim Effect
 	UPROPERTY(EditAnywhere)

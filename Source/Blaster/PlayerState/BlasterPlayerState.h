@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
+#include "../BlasterType/Team.h"
 #include "BlasterPlayerState.generated.h"
 
 /**
@@ -33,4 +34,15 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_Defeats)
 	int32 Defeats;
 	
+	// Team을 복제하는 이유는 다른 클라이언트에서도 다른 플레이어의 팀을 알아야
+	// 정확하게 팀인지 구분 가능하기 때문
+	UPROPERTY(ReplicatedUsing = OnRep_Team)
+	ETeam Team = ETeam::ET_NoTeam;
+
+	UFUNCTION()
+	void OnRep_Team();
+
+public:
+	FORCEINLINE ETeam GetTeam() const { return Team; }
+	void SetTeam(ETeam _Team);
 };
