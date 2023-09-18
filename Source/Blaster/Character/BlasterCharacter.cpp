@@ -29,6 +29,7 @@
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
 #include "../GameState/BlasterGameState.h"
+#include "../PlayerStart/TeamPlayerStart.h"
 
 ABlasterCharacter::ABlasterCharacter()
 {
@@ -646,6 +647,8 @@ void ABlasterCharacter::EquipButtonPressed()
 	// HasAuthority = 서버만 호출 가능
 	if (Combat)
 	{
+		if (Combat->bHoldingTheFlag)
+			return;
 		if (Combat->CombatState == ECombatState::ECS_Unoccupied)
 			ServerEquipButtonPressed();
 		
@@ -683,6 +686,8 @@ void ABlasterCharacter::CrouchButtonPressed()
 {
 	if (bDisableGameplay)
 		return;
+	if (Combat && Combat->bHoldingTheFlag)
+		return;
 
 	if (bIsCrouched)
 	{
@@ -703,6 +708,8 @@ void ABlasterCharacter::ReloadButtonPressed()
 	// 따라서 서버에서만 리로드 하는것이 적절한지 확인하기 위해 유효성 검사를 수행한다.
 	if (Combat)
 	{
+		if (Combat->bHoldingTheFlag)
+			return;
 		Combat->Reload();
 	}
 }
@@ -711,6 +718,8 @@ void ABlasterCharacter::GrenadeButtonPressed()
 {
 	if (Combat)
 	{
+		if (Combat->bHoldingTheFlag)
+			return;
 		Combat->ThrowGrenade();
 	}
 }
@@ -722,6 +731,8 @@ void ABlasterCharacter::AimButtonPressed()
 
 	if (Combat)
 	{
+		if (Combat->bHoldingTheFlag)
+			return;
 		Combat->SetAiming(true);
 	}
 }
@@ -733,6 +744,8 @@ void ABlasterCharacter::AimButtonReleased()
 
 	if (Combat)
 	{
+		if (Combat->bHoldingTheFlag)
+			return;
 		Combat->SetAiming(false);
 	}
 }
@@ -846,6 +859,9 @@ void ABlasterCharacter::Jump()
 	if (bDisableGameplay)
 		return;
 
+	if (Combat && Combat->bHoldingTheFlag)
+		return;
+
 	// 스페이스바를 눌렀는데 앉아있는 상태라면 일어서고
 	if (bIsCrouched)
 	{
@@ -866,6 +882,8 @@ void ABlasterCharacter::FireButtonPressed()
 	// 컴뱃에 좌클릭 클릭했다 전달
 	if (Combat)
 	{
+		if (Combat->bHoldingTheFlag)
+			return;
 		Combat->FireButtonPressed(true);
 	}
 }
@@ -877,6 +895,8 @@ void ABlasterCharacter::FireButtonReleased()
 
 	if (Combat)
 	{
+		if (Combat->bHoldingTheFlag)
+			return;
 		Combat->FireButtonPressed(false);
 	}
 }
@@ -1036,10 +1056,7 @@ void ABlasterCharacter::PollInit()
 
 		if (BlasterPlayerState)
 		{
-			// 0을 넣어 갱신만 해준다.
-			BlasterPlayerState->AddToScore(0.f);
-			BlasterPlayerState->AddToDefeats(0);
-			SetTeamColor(BlasterPlayerState->GetTeam());
+			OnPlayerStateInitialized();
 
 			ABlasterGameState* BlasterGameState = Cast<ABlasterGameState>(UGameplayStatics::GetGameState(this));
 
@@ -1054,6 +1071,18 @@ void ABlasterCharacter::PollInit()
 
 void ABlasterCharacter::RotateInPlace(float DeltaTime)
 {
+	if (Combat && Combat->bHoldingTheFlag)
+	{
+		bUseControllerRotationYaw = false;
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+		TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+		return;
+	}
+	if (Combat && Combat->EquippedWeapon)
+	{
+		bUseControllerRotationYaw = true;
+		GetCharacterMovement()->bOrientRotationToMovement = false;
+	}
 	if (bDisableGameplay)
 	{
 		bUseControllerRotationYaw = false;
@@ -1103,7 +1132,48 @@ void ABlasterCharacter::DropOrDestroyWeapons()
 		{
 			DropOrDestroyWeapon(Combat->SecondaryWeapon);
 		}
+		if (Combat->TheFlag)
+		{
+			Combat->TheFlag->Dropped();
+		}
 	}
+}
+
+void ABlasterCharacter::SetSpawnPoint()
+{
+	if (HasAuthority() && BlasterPlayerState->GetTeam() != ETeam::ET_NoTeam)
+	{
+		TArray<AActor*> PlayerStarts;
+		// 배치해둔 모든 플레이어스타트액터를 얻어온다.
+		UGameplayStatics::GetAllActorsOfClass(this, ATeamPlayerStart::StaticClass(), PlayerStarts);
+		TArray<ATeamPlayerStart*> TeamPlayerStarts;
+		for (auto Start : PlayerStarts)
+		{
+			ATeamPlayerStart* TeamStart = Cast<ATeamPlayerStart>(Start);
+			// 플레이어 스타트의 팀이랑 플레이어의 팀이랑 같다면 TeamPlayerStarts에 팀 스타트 액터를 저장한다.
+			if (TeamStart && TeamStart->GetTeam() == BlasterPlayerState->GetTeam())
+			{
+				TeamPlayerStarts.Add(TeamStart);
+			}
+		}
+
+		// 결국 배열에 저장된 부분은 같은 팀 스폰포인트가 저장된거기 때문에
+		// 그 중 랜덤의 액터 위치에 해당 플레이어를 스폰하는것이다.
+		if (TeamPlayerStarts.Num() > 0)
+		{
+			ATeamPlayerStart* ChosenPlayerStart = TeamPlayerStarts[FMath::RandRange(0, TeamPlayerStarts.Num() - 1)];
+			SetActorLocationAndRotation(ChosenPlayerStart->GetActorLocation(), ChosenPlayerStart->GetActorRotation());
+
+		}
+	}
+}
+
+void ABlasterCharacter::OnPlayerStateInitialized()
+{// 0을 넣어 갱신만 해준다.
+	BlasterPlayerState->AddToScore(0.f);
+	BlasterPlayerState->AddToDefeats(0);
+	SetTeamColor(BlasterPlayerState->GetTeam());
+	SetSpawnPoint();
 }
 
 void ABlasterCharacter::UpdateDissolveMaterial(float DissolveValue)
@@ -1208,6 +1278,31 @@ UBoxComponent* ABlasterCharacter::GetHitColisionBoxFromFName(const FName& Name)
 		return HitCollisionBoxes[Name];
 
 	return nullptr;
+}
+
+bool ABlasterCharacter::IsHoldingTheFlag() const
+{
+	if (Combat == nullptr)
+		return false;
+
+	return Combat->bHoldingTheFlag;
+}
+
+ETeam ABlasterCharacter::GetTeam()
+{
+	BlasterPlayerState = BlasterPlayerState == nullptr ? GetPlayerState<ABlasterPlayerState>() : BlasterPlayerState;
+	if (BlasterPlayerState == nullptr)
+		return ETeam::ET_NoTeam;
+
+	return BlasterPlayerState->GetTeam();
+}
+
+void ABlasterCharacter::SetHoldingTheFlag(bool bHolding)
+{
+	if (Combat == nullptr)
+		return;
+
+	Combat->bHoldingTheFlag = bHolding;
 }
 
 bool ABlasterCharacter::IsLocallyReloading()

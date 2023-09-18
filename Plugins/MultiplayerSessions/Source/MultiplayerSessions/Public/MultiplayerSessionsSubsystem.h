@@ -45,6 +45,9 @@ public:
 	FMultiplayerOnDestroySessionComplete MultiplayerOnDestroySessionComplete;
 	FMultiplayerOnStartSessionComplete MultiplayerOnStartSessionComplete;
 
+	int32 DesiredNumPublicConnections{};
+	FString DesiredMatchType{};
+
 protected:
 	// 델리게이트에 바인드할 콜백 함수
 	void OnCreateSessionComplete(FName SessionName, bool bWasSuccessful);

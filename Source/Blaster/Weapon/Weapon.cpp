@@ -88,6 +88,13 @@ void AWeapon::OnSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* 
 
 	if (BlasterCharacter)
 	{
+		if (WeaponType == EWeaponType::EWT_Flag && BlasterCharacter->GetTeam() == Team)
+			return;
+
+		// 플래그를 들고있다면 리턴
+		if (BlasterCharacter->IsHoldingTheFlag())
+			return;
+
 		BlasterCharacter->SetOverlappingWeapon(this);
 	}
 }
@@ -98,6 +105,13 @@ void AWeapon::OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActo
 
 	if (BlasterCharacter)
 	{
+		// 빨간팀 유저가 파란팀 깃발을 못들도록 설정
+		if (WeaponType == EWeaponType::EWT_Flag && BlasterCharacter->GetTeam() == Team) 
+			return;
+
+		// 플래그를 들고있다면 리턴
+		if (BlasterCharacter->IsHoldingTheFlag())
+			return;
 		BlasterCharacter->SetOverlappingWeapon(nullptr);
 	}
 }
@@ -202,6 +216,7 @@ void AWeapon::OnRep_WeaponState()
 {
 	OnWeaponStateSet();
 }
+
 void AWeapon::OnWeaponStateSet()
 {
 	switch (WeaponState)
@@ -331,6 +346,7 @@ bool AWeapon::IsAmmoFull()
 	return Ammo == MagCapacity;
 }
 
+
 void AWeapon::ShowPickupWidget(bool bShowWidget)
 {
 	if (PickupWidget)
@@ -419,10 +435,10 @@ FVector AWeapon::TraceEndWithScatter(const FVector& HitTarget)
 	const FVector EndLoc = SphereCenter + RandVec;
 	const FVector ToEndLoc = EndLoc - TraceStart;
 
-	//DrawDebugSphere(GetWorld(), SphereCenter, SphereRadius, 12, FColor::Red, true);
-	//DrawDebugSphere(GetWorld(), EndLoc, 4.f, 12, FColor::Orange, true);
-	//DrawDebugLine(GetWorld(), TraceStart, FVector(TraceStart + ToEndLoc * TRACE_LENGTH / ToEndLoc.Size()),
-	//	FColor::Cyan, true);
+	/*DrawDebugSphere(GetWorld(), SphereCenter, SphereRadius, 12, FColor::Red, true);
+	DrawDebugSphere(GetWorld(), EndLoc, 4.f, 12, FColor::Orange, true);
+	DrawDebugLine(GetWorld(), TraceStart, FVector(TraceStart + ToEndLoc * TRACE_LENGTH / ToEndLoc.Size()),
+		FColor::Cyan, true);*/
 
 		// ToEndLoc.size()로 나누는 이유는 TRACE_LENGTH가 8만이여서 곱했을때 범위 벗어나는거 방지를 위함
 	return FVector(TraceStart + ToEndLoc * TRACE_LENGTH / ToEndLoc.Size());

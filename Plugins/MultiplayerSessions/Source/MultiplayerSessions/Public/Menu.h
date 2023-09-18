@@ -56,7 +56,10 @@ private:
 	// 모든 온라인 세션 기능을 처리하도록 설계된 서브시스템
 	class UMultiplayerSessionsSubsystem* m_MultiplayerSessionsSubsystem;
 
+	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	int32 m_NumPublicConnections{4};
+
+	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	FString m_Matchtype{TEXT("FreeForAll")};
 	FString m_PathToLobby{ TEXT("") };
 

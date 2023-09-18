@@ -19,6 +19,14 @@ struct FBoxInformation
 
 	UPROPERTY()
 	FVector BoxExtent;
+
+	FBoxInformation()	:
+		Location(FVector::ZeroVector),
+		Rotation(FRotator::ZeroRotator),
+		BoxExtent(FVector::ZeroVector)
+	{
+
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -36,6 +44,13 @@ struct FFramePackage
 
 	UPROPERTY()
 	class ABlasterCharacter* Character;
+
+	FFramePackage() :
+		Time(0.f),
+		Character(nullptr)
+	{
+
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -48,6 +63,17 @@ struct FServerSideRewindResult
 
 	UPROPERTY()
 	bool bHeadShot;	// 헤드샷 적중인지
+
+	FServerSideRewindResult()
+		: bHitConfirmed(false), 
+		bHeadShot(false)
+	{
+	}
+
+	FServerSideRewindResult(bool InHitConfirmed, bool InHeadShot)
+		: bHitConfirmed(InHitConfirmed), bHeadShot(InHeadShot)
+	{
+	}
 };
 
 USTRUCT(BlueprintType)
@@ -60,6 +86,10 @@ struct FShotgunServerSideRewindResult
 	
 	UPROPERTY()
 	TMap<class ABlasterCharacter*, uint32> BodyShots;
+
+	FShotgunServerSideRewindResult()
+	{
+	}
 };
 
 

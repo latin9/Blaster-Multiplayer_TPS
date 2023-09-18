@@ -12,18 +12,28 @@ struct FHUDPackage
 	GENERATED_BODY()
 public:
 	UPROPERTY()
-	class UTexture2D* CrosshairCenter;
+	class UTexture2D* CrosshairCenter = nullptr;
 	UPROPERTY()
-	class UTexture2D* CrosshairLeft;
+	class UTexture2D* CrosshairLeft = nullptr;
 	UPROPERTY()
-	class UTexture2D* CrosshairRight;
+	class UTexture2D* CrosshairRight = nullptr;
 	UPROPERTY()
-	class UTexture2D* CrosshairTop;
+	class UTexture2D* CrosshairTop = nullptr;
 	UPROPERTY()
-	class UTexture2D* CrosshairBottom;
+	class UTexture2D* CrosshairBottom = nullptr;
 	UPROPERTY()
 	float CrosshairSpread;	// 십자선을 얼마나 벌려야 하는지 알려주는 값(이동하거나 그럴떄)
 	FLinearColor CrosshairsColor;
+	FHUDPackage()
+		: CrosshairCenter(nullptr),
+		CrosshairLeft(nullptr),
+		CrosshairRight(nullptr),
+		CrosshairTop(nullptr),
+		CrosshairBottom(nullptr),
+		CrosshairSpread(0.0f),
+		CrosshairsColor(FLinearColor::White) // 다른 적절한 기본값으로 설정할 수 있음
+	{
+	}
 };
 
 /**

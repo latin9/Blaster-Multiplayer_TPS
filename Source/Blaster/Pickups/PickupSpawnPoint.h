@@ -23,8 +23,18 @@ protected:
 	UPROPERTY(EditAnywhere)
 	TArray<TSubclassOf<class APickup>> PickupClasses;
 
+	/*UPROPERTY(EditAnywhere)
+	TArray<TSubclassOf<class AWeapon>> PickupWeaponClasses;
+
+	UPROPERTY(EditAnywhere)
+	TArray<TSubclassOf<class APickup>> PickupAmmoClasses;*/
+	
 	UPROPERTY()
-	APickup* SpawnedPickup;
+	class APickup* SpawnedPickup;
+	/*UPROPERTY()
+	class AWeapon* SpawnedWeaponPickup;
+	UPROPERTY()
+	TArray<class APickup*> SpawnedAmmoPickup;*/
 
 protected:
 	void SpawnPickup();
@@ -41,6 +51,9 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	float SpawnPickupTimeMax;
+
+	/*UPROPERTY(EditAnywhere)
+	int32 SpawnedAmmoCount;*/
 
 
 

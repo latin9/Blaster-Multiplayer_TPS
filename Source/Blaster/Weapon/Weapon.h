@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "WeaponTypes.h"
+#include "../BlasterType/Team.h"
 #include "Weapon.generated.h"
 
 UENUM(BlueprintType)
@@ -15,6 +16,7 @@ enum class EWeaponState : uint8
 	EWS_Equipped UMETA(DisplayName = "Equipped"),
 	EWS_EquippedSecondary UMETA(DisplayName = "EquippedSecondary"),
 	EWS_Dropped UMETA(DisplayName = "Dropped"),
+
 	EWS_MAX UMETA(DisplayName = "DefaulMax")
 };
 
@@ -42,7 +44,7 @@ public:
 	void ShowPickupWidget(bool bShowWidget);
 	virtual void Fire(const FVector& HitTarget);
 	// 무기 드랍
-	void Dropped();
+	virtual void Dropped();
 	void AddAmmo(int32 AmmoToAdd);
 	void SetHUDAmmo();
 	// 샷건 분산 알고리즘
@@ -126,6 +128,9 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Weapon Scatter")
 	bool bUseScatter = false;
 
+	UPROPERTY(EditAnywhere)
+	ETeam Team;
+
 protected:
 	UPROPERTY()
 	class ABlasterCharacter* BlasterOwnerCharacter;
@@ -201,5 +206,7 @@ public:
 	FORCEINLINE float GetDamage() const { return Damage; }
 	FORCEINLINE float GetHeadShotDamage() const { return HeadShotDamage; }
 	FORCEINLINE void SetUseServerSideRewind(bool _Enable) { bUseServerSideRewind = _Enable; }
+	FORCEINLINE class UWidgetComponent* GetPickupWidget() const { return PickupWidget; }
+	FORCEINLINE ETeam GetTeam() const { return Team; }
 
 };

@@ -3,6 +3,7 @@
 
 #include "PickupSpawnPoint.h"
 #include "Pickup.h"
+#include "../Weapon/Weapon.h"
 
 APickupSpawnPoint::APickupSpawnPoint()
 {
@@ -41,6 +42,35 @@ void APickupSpawnPoint::SpawnPickup()
 			SpawnedPickup->OnDestroyed.AddDynamic(this, &APickupSpawnPoint::StartSpawnPickupTimer);
 		}
 	}
+
+	/*if (NumPickupWeaponClasses > 0 && SpawnedAmmoPickup.Num() == 0)
+	{
+		int32 Selection = FMath::RandRange(0, NumPickupWeaponClasses - 1);
+		SpawnedWeaponPickup = GetWorld()->SpawnActor<AWeapon>(PickupWeaponClasses[Selection], GetActorTransform());
+
+		if (SpawnedAmmoPickup.Num() > 0)
+			SpawnedAmmoPickup.Empty();
+
+		int32 AmmoCount = FMath::RandRange(0, SpawnedAmmoCount);
+
+		for (int i = 0; i < AmmoCount; ++i)
+		{
+			FVector NewLotation = SpawnedWeaponPickup->GetActorLocation() + 30.f * i;
+			NewLotation.Z = SpawnedWeaponPickup->GetActorLocation().Z;
+			APickup* AmmoPickup = GetWorld()->SpawnActor<APickup>(PickupAmmoClasses[Selection], NewLotation, SpawnedWeaponPickup->GetActorRotation());
+
+			SpawnedAmmoPickup.Add(AmmoPickup);
+		}
+
+		if (HasAuthority() && SpawnedWeaponPickup && SpawnedAmmoPickup.Num() > 0)
+		{
+			SpawnedWeaponPickup->OnDestroyed.AddDynamic(this, &APickupSpawnPoint::StartSpawnPickupTimer);
+			for (auto Pickup : SpawnedAmmoPickup)
+			{
+				Pickup->OnDestroyed.AddDynamic(this, &APickupSpawnPoint::StartSpawnPickupTimer);
+			}
+		}
+	}*/
 }
 
 void APickupSpawnPoint::SpawnPickupTimerFinished()

@@ -104,6 +104,9 @@ protected:
 	void DropOrDestroyWeapon(AWeapon* Weapon);
 	void DropOrDestroyWeapons();
 
+	void SetSpawnPoint();
+	void OnPlayerStateInitialized();
+
 public:
 
 protected:
@@ -206,7 +209,7 @@ private:
 
 	// ÇöÀç ½¯µå
 	UPROPERTY(ReplicatedUsing = OnRep_Shield, VisibleAnywhere, Category = "Player Stats")
-	float Shield = 0.f;
+	float Shield = 1000.f;
 
 	UFUNCTION()
 	void OnRep_Shield(float LastShield);
@@ -401,7 +404,12 @@ public:
 	FORCEINLINE bool IsSwappingFinished() const { return bFinishedSwapping; }
 	FORCEINLINE void SetSwappingFinished(bool _IsFinished) { bFinishedSwapping = _IsFinished; }
 	class UBoxComponent* GetHitColisionBoxFromFName(const FName& Name);
+	bool IsHoldingTheFlag() const;
+	ETeam GetTeam();
+
 	//FORCEINLINE FOnLeftGame GetOnLeftGame() { return OnLeftGame; }
+
+	void SetHoldingTheFlag(bool bHolding);
 
 
 	bool IsLocallyReloading();
