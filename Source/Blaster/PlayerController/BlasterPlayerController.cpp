@@ -136,19 +136,19 @@ void ABlasterPlayerController::ChangeUIMode()
 	if (!bHUDValide)
 		return;
 
-	if (bUIOnlyModeEnable && BlasterHUD->GetChatOverlay()->GetVisibility() == ESlateVisibility::Hidden)
+	if (bUIOnlyModeEnable)
 	{
 		SetInputMode(FInputModeGameAndUI());
 		SetShowMouseCursor(true);
 		BlasterHUD->GetChatOverlay()->SetVisibility(ESlateVisibility::Visible);
 		BlasterHUD->GetChatOverlay()->GetChatInputText()->SetFocus();
 	}
-	else if(BlasterHUD->GetChatOverlay()->GetChatInputText()->GetText().IsEmpty() &&
-		BlasterHUD->GetChatOverlay()->GetVisibility() == ESlateVisibility::Visible)
+	else
 	{
 		SetInputMode(FInputModeGameOnly());
 		SetShowMouseCursor(false);
 		BlasterHUD->GetChatOverlay()->SetVisibility(ESlateVisibility::Hidden);
+		FSlateApplication::Get().ClearAllUserFocus();
 	}
 }
 
@@ -157,6 +157,7 @@ void ABlasterPlayerController::OnRep_ShowTeamScores()
 	if (bShowTeamScores)
 	{
 		InitTeamScores();
+		HideHUDScore();
 	}
 	else
 	{
@@ -313,6 +314,7 @@ void ABlasterPlayerController::SetHUDShield(float Shield, float MaxShield)
 
 void ABlasterPlayerController::SetHUDScore(float Score)
 {
+	UE_LOG(LogTemp, Error, TEXT("SetHUDSCore Start"));
 	BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
 
 	bool bHUDValid = BlasterHUD &&
@@ -327,6 +329,29 @@ void ABlasterPlayerController::SetHUDScore(float Score)
 	{
 		bInitializeScore = true;
 		HUDScore = Score;
+	}
+}
+
+void ABlasterPlayerController::HideHUDScore()
+{
+	BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
+
+	bool bHUDValid = BlasterHUD &&
+		BlasterHUD->GetCharacterOverlay() &&
+		BlasterHUD->GetCharacterOverlay()->ScoreAmount &&
+		BlasterHUD->GetCharacterOverlay()->DefeatsAmount &&
+		BlasterHUD->GetCharacterOverlay()->ScoreText &&
+		BlasterHUD->GetCharacterOverlay()->DefeatsText;
+	if (bHUDValid)
+	{
+		BlasterHUD->GetCharacterOverlay()->ScoreAmount->SetText(FText());
+		BlasterHUD->GetCharacterOverlay()->DefeatsAmount->SetText(FText());
+		BlasterHUD->GetCharacterOverlay()->ScoreText->SetText(FText());
+		BlasterHUD->GetCharacterOverlay()->DefeatsText->SetText(FText());
+	} 
+	else
+	{
+		bHideHUDScore = true;
 	}
 }
 
@@ -537,6 +562,26 @@ void ABlasterPlayerController::SetHUDBlueTeamScore(int32 BlueScore)
 	}
 }
 
+void ABlasterPlayerController::SwitchViewToOtherPlayer()
+{
+	BlasterGameMode = BlasterGameMode == nullptr ? Cast<ABlasterGameMode>(UGameplayStatics::GetGameMode(this)) : BlasterGameMode;
+
+	if (BlasterGameMode)
+	{
+		//// 플레이어 컨트롤러의 렌더링 뷰 타겟을 변경할 플레이어 인덱스를 얻습니다.
+		//int32 NewPlayerIndex = BlasterGameMode->GetNextPlayerToView();
+
+		//// 해당 인덱스에 해당하는 플레이어 컨트롤러를 가져옵니다.
+		//ABlasterPlayerController* NewPlayerController = BlasterGameMode->GetPlayerControllerByIndex(NewPlayerIndex);
+
+		//if (NewPlayerController)
+		//{
+		//	// 현재 플레이어 컨트롤러의 렌더링 뷰 타겟을 변경합니다.
+		//	SetViewTargetWithBlend(NewPlayerController, YourBlendTime, YourBlendFunc, YourBlendExp);
+		//}
+	}
+}
+
 void ABlasterPlayerController::ServerSendChatMessage_Implementation(const FString& Message)
 {
 	TArray<AActor*> OutActors;
@@ -639,6 +684,8 @@ void ABlasterPlayerController::PollInit()
 					SetHUDCarriedAmmo(HUDCarriedAmmo);
 				if (bInitializeWeaponAmmo)
 					SetHUDWeaponAmmo(HUDWeaponAmmo);
+				if (bHideHUDScore)
+					HideHUDScore();
 				ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(GetPawn());
 				if (BlasterCharacter && BlasterCharacter->GetCombatComponent())
 				{
@@ -755,6 +802,7 @@ void ABlasterPlayerController::HandleMatchHasStarted(bool bTeamMatch)
 		if (bTeamMatch)
 		{
 			InitTeamScores();
+			HideHUDScore();
 		}
 		else
 		{

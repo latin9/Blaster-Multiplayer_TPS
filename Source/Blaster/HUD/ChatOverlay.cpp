@@ -11,6 +11,8 @@
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "../PlayerController/BlasterPlayerController.h"
+#include "BlasterHUD.h"
+#include "CharacterOverlay.h"
 
 void UChatOverlay::NativeConstruct()
 {
@@ -63,6 +65,20 @@ void UChatOverlay::OnChatTextCommitted(const FText& Text, ETextCommit::Type Comm
 			PlayerController->SendMessage(Text);
 			SetInputText(FText::GetEmpty());
 			//AddChatText(Text.ToString());
+		}
+		else // 텍스트가 비어있다면
+		{
+			bool bValidHUD = PlayerController->GetBlastertHUD() &&
+				PlayerController->GetBlastertHUD()->GetCharacterOverlay() && 
+				PlayerController->GetBlastertHUD()->GetChatOverlay()->GetVisibility() == ESlateVisibility::Visible;
+			if (bValidHUD)
+			{
+				PlayerController->SetInputMode(FInputModeGameOnly());
+				PlayerController->SetShowMouseCursor(false);
+				PlayerController->GetBlastertHUD()->GetChatOverlay()->SetVisibility(ESlateVisibility::Hidden);
+				PlayerController->SetUIOnlyModeEnable(!PlayerController->GetUIOnlyModeEnable());
+				FSlateApplication::Get().ClearAllUserFocus();
+			}
 		}
 		break;
 	case ETextCommit::OnUserMovedFocus:

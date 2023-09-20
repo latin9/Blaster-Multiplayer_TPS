@@ -277,6 +277,9 @@ void ABlasterCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	PlayerInputComponent->BindAxis(TEXT("MoveRight"), this, &ABlasterCharacter::MoveRight);
 	PlayerInputComponent->BindAxis(TEXT("Turn"), this, &ABlasterCharacter::Turn);
 	PlayerInputComponent->BindAxis(TEXT("LookUp"), this, &ABlasterCharacter::LookUp);
+
+
+	PlayerInputComponent->BindAction(TEXT("SwitchToPlayerView"), IE_Pressed, this, &ABlasterCharacter::SwitchToPlayerView);
 }
 
 void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -549,6 +552,11 @@ void ABlasterCharacter::PlayHitReactMontage()
 		// 해당 함수에 몽타주 섹션 이름을 넣어주면 해당 위치의 섹션으로 건너뒤어서 실행한다.
 		AnimInstance->Montage_JumpToSection(SectionName);
 	}
+}
+
+void ABlasterCharacter::SwitchToPlayerView()
+{
+	//BlasterPlayerController->SwitchViewToOtherPlayer();
 }
 
 void ABlasterCharacter::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, 
@@ -1169,9 +1177,10 @@ void ABlasterCharacter::SetSpawnPoint()
 }
 
 void ABlasterCharacter::OnPlayerStateInitialized()
-{// 0을 넣어 갱신만 해준다.
-	BlasterPlayerState->AddToScore(0.f);
-	BlasterPlayerState->AddToDefeats(0);
+{
+	// 0을 넣어 갱신만 해준다.
+	/*BlasterPlayerState->AddToScore(0.f);
+	BlasterPlayerState->AddToDefeats(0);*/
 	SetTeamColor(BlasterPlayerState->GetTeam());
 	SetSpawnPoint();
 }

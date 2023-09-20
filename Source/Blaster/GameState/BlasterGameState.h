@@ -42,6 +42,11 @@ public:
 	void AddRedTeamScores();
 	void AddBlueTeamScores();
 
+	void AddRedTeamScores(float Scores);
+	void AddBlueTeamScores(float Scores);
+
+
+
 
 private:
 	float TopScore = 0.f;

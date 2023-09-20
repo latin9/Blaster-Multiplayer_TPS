@@ -93,6 +93,8 @@ protected:
 	void FireButtonPressed();
 	void FireButtonReleased();
 	void PlayHitReactMontage();
+
+	void SwitchToPlayerView();
 	
 	UFUNCTION()
 	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
@@ -209,7 +211,7 @@ private:
 
 	// ÇöÀç ½¯µå
 	UPROPERTY(ReplicatedUsing = OnRep_Shield, VisibleAnywhere, Category = "Player Stats")
-	float Shield = 1000.f;
+	float Shield = 100.f;
 
 	UFUNCTION()
 	void OnRep_Shield(float LastShield);

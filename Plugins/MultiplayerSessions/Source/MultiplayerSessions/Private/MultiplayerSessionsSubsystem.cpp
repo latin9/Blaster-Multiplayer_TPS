@@ -83,7 +83,7 @@ void UMultiplayerSessionsSubsystem::FindSession(int32 MaxSearchResults)
 
 	// 로컬 플레이어를 얻어와 넷ID를 얻을 수 있다.
 	const ULocalPlayer* LocalPlayer = GetWorld()->GetFirstLocalPlayerFromController();
-
+	m_SessionInterface->GetSessionState(NAME_GameSession);
 	// 세션을 호출하고 세션이 완료되면 응답으로 콜백함수를 호출 요청
 	if (!m_SessionInterface->FindSessions(*LocalPlayer->GetPreferredUniqueNetId(), m_LastSessionSearch.ToSharedRef()))
 	{

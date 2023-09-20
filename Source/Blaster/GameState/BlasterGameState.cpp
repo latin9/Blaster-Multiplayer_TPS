@@ -82,3 +82,27 @@ void ABlasterGameState::AddBlueTeamScores()
 		BlasterPlayerController->SetHUDBlueTeamScore(BlueTeamScore);
 	}
 }
+
+void ABlasterGameState::AddRedTeamScores(float Scores)
+{
+	RedTeamScore += Scores;;
+
+	ABlasterPlayerController* BlasterPlayerController = Cast<ABlasterPlayerController>(GetWorld()->GetFirstPlayerController());
+
+	if (BlasterPlayerController)
+	{
+		BlasterPlayerController->SetHUDRedTeamScore(RedTeamScore);
+	}
+}
+
+void ABlasterGameState::AddBlueTeamScores(float Scores)
+{
+	BlueTeamScore += Scores;
+
+	ABlasterPlayerController* BlasterPlayerController = Cast<ABlasterPlayerController>(GetWorld()->GetFirstPlayerController());
+
+	if (BlasterPlayerController)
+	{
+		BlasterPlayerController->SetHUDRedTeamScore(RedTeamScore);
+	}
+}

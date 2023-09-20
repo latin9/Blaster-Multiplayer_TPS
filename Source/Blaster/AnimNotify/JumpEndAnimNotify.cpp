@@ -29,6 +29,18 @@ UJumpEndAnimNotify::UJumpEndAnimNotify()
 	if (Metal.Succeeded())
 		m_Metal = Metal.Object;
 
+
+	static ConstructorHelpers::FObjectFinder<USoundBase> Dirt(TEXT("SoundCue'/Game/Asset/Sounds/Footsteps/SCue_FS_Dirt.SCue_FS_Dirt'"));
+
+	if (Dirt.Succeeded())
+		m_Dirt = Dirt.Object;
+
+
+	static ConstructorHelpers::FObjectFinder<USoundBase> Snow(TEXT("SoundCue'/Game/Asset/Sounds/Footsteps/SCue_FS_Snow.SCue_FS_Snow'"));
+
+	if (Snow.Succeeded())
+		m_Snow = Snow.Object;
+
 }
 
 void UJumpEndAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation,
@@ -92,8 +104,10 @@ TObjectPtr<USoundBase> UJumpEndAnimNotify::SelectSoundBase()
 		return  m_Metal;
 		break;
 	case SurfaceType4:
+		return m_Grass;
 		break;
 	case SurfaceType5:
+		return m_Grass;
 		break;
 	case SurfaceType6:
 		break;

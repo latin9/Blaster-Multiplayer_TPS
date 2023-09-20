@@ -25,6 +25,7 @@ public:
 	void SetHUDHealth(float Health, float MaxHealth);
 	void SetHUDShield(float Shield, float MaxShield);
 	void SetHUDScore(float Score);
+	void HideHUDScore();
 	void SetHUDDefeats(int32 Defeats);
 	void SetHUDWeaponAmmo(int32 Ammo);
 	void SetHUDCarriedAmmo(int32 Ammo);
@@ -53,6 +54,9 @@ public:
 	void InitTeamScores();
 	void SetHUDRedTeamScore(int32 RedScore);
 	void SetHUDBlueTeamScore(int32 BlueScore);
+
+public:
+	void SwitchViewToOtherPlayer();
 
 protected:
 	void SetHUDTime();
@@ -155,6 +159,8 @@ private:
 	int32 HUDWeaponAmmo;
 	bool bInitializeWeaponAmmo = false;
 
+	bool bHideHUDScore = false;
+
 	// гн
 	float HighPingRunningTime = 0.f;
 
@@ -185,4 +191,7 @@ private:
 
 public:
 	FORCEINLINE float GetSingleTripTime() const { return SingleTripTime; }
+	FORCEINLINE class ABlasterHUD* GetBlastertHUD() const { return BlasterHUD; }
+	FORCEINLINE bool GetUIOnlyModeEnable() const { return bUIOnlyModeEnable; }
+	FORCEINLINE void SetUIOnlyModeEnable(bool _Enable) { bUIOnlyModeEnable = _Enable; }
 };

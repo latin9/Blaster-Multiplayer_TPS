@@ -131,6 +131,11 @@ void UMenu::OnFindSession(const TArray<FOnlineSessionSearchResult>& SessionResul
 			m_MultiplayerSessionsSubsystem->JoinSession(Result);
 			return;
 		}
+		else
+		{
+			JoinButton->SetIsEnabled(true);
+			return;
+		}
 	}
 
 	if (!bWasSuccessful || SessionResults.Num() == 0)

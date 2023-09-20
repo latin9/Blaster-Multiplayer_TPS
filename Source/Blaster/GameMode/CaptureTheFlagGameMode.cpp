@@ -20,11 +20,11 @@ void ACaptureTheFlagGameMode::FlagCaptured(AFlag* Flag, AFlagZone* Zone)
 	{
 		if (Zone->GetTeam() == ETeam::ET_BlueTeam)
 		{
-			BlasterGameState->AddBlueTeamScores();
+			BlasterGameState->AddBlueTeamScores(10.f);
 		}
 		if (Zone->GetTeam() == ETeam::ET_RedTeam)
 		{
-			BlasterGameState->AddRedTeamScores();
+			BlasterGameState->AddRedTeamScores(10.f);
 		}
 	}
 }

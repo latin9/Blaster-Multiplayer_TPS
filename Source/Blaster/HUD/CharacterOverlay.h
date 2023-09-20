@@ -28,10 +28,16 @@ public:
 	class UTextBlock* ShieldText;
 
 	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* ScoreText;
+
+	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* ScoreAmount;
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* DefeatsAmount;
+
+	UPROPERTY(meta = (BindWidget))
+	class UTextBlock* DefeatsText;
 
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* WeaponAmmoAmount;
