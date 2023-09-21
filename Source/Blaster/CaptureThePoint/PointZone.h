@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "../BlasterType/Team.h"
+#include "../Weapon/WeaponTypes.h"
 #include "PointZone.generated.h"
 
 UCLASS()
@@ -23,16 +24,17 @@ public:
 
 protected:
 	UFUNCTION()
-	virtual void OnSphereOverlap(UPrimitiveComponent* OverlappedComponent,
+	virtual void OnBoxBeginOverlap(UPrimitiveComponent* OverlappedComponent,
 		AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 		bool bFromSweep, const FHitResult& SweepResult);
+	
+	UFUNCTION()
+	virtual void OnBoxEndOverlap(UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 private:
-	UPROPERTY()
-	class ABlasterCharacter* BlasterCharacter;
-
 	UPROPERTY(EditAnywhere)
-	class USphereComponent* ZoneSphere;
+	class UBoxComponent* ZoneBox;
 
 	UPROPERTY()
 	class ACapturePointGameMode* GameMode;
@@ -40,7 +42,7 @@ private:
 	int32 RedTeamCount;
 	int32 BlueTeamCount;
 
-	int32 ScoreDelta;
+	float ScoreDelta;
 
 
 };

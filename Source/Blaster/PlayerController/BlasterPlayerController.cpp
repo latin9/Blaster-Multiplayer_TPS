@@ -684,8 +684,8 @@ void ABlasterPlayerController::PollInit()
 					SetHUDCarriedAmmo(HUDCarriedAmmo);
 				if (bInitializeWeaponAmmo)
 					SetHUDWeaponAmmo(HUDWeaponAmmo);
-				if (bHideHUDScore)
-					HideHUDScore();
+				/*if (bHideHUDScore)
+					HideHUDScore();*/
 				ABlasterCharacter* BlasterCharacter = Cast<ABlasterCharacter>(GetPawn());
 				if (BlasterCharacter && BlasterCharacter->GetCombatComponent())
 				{
@@ -802,7 +802,7 @@ void ABlasterPlayerController::HandleMatchHasStarted(bool bTeamMatch)
 		if (bTeamMatch)
 		{
 			InitTeamScores();
-			HideHUDScore();
+			//HideHUDScore();
 		}
 		else
 		{

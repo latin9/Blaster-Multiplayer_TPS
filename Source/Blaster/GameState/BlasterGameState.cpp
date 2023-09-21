@@ -103,6 +103,6 @@ void ABlasterGameState::AddBlueTeamScores(float Scores)
 
 	if (BlasterPlayerController)
 	{
-		BlasterPlayerController->SetHUDRedTeamScore(RedTeamScore);
+		BlasterPlayerController->SetHUDBlueTeamScore(BlueTeamScore);
 	}
 }

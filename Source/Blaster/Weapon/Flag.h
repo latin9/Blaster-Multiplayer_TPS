@@ -32,9 +32,9 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* FlagMesh;
 
-	FTransform InitialTrnasform;
+	FTransform InitialTransform;
 
 public:
-	FORCEINLINE FTransform GetInitialTransform() const { return InitialTrnasform; }
+	FORCEINLINE FTransform GetInitialTransform() const { return InitialTransform; }
 	
 };

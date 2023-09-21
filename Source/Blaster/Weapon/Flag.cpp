@@ -21,7 +21,7 @@ void AFlag::BeginPlay()
 {
 	Super::BeginPlay();
 
-	InitialTrnasform = GetActorTransform();
+	InitialTransform = GetActorTransform();
 }
 
 void AFlag::Dropped()
@@ -48,23 +48,22 @@ void AFlag::ResetFlag()
 		FlagBearer->SetOverlappingWeapon(nullptr);
 		FlagBearer->UnCrouch();
 	}
+
+	FDetachmentTransformRules DetachRules(EDetachmentRule::KeepWorld, true);
+	FlagMesh->DetachFromComponent(DetachRules);
+	SetActorTransform(InitialTransform);
+	SetWeaponState(EWeaponState::EWS_Initial);
+
 	// 아래부터 서버에서만 적용
 	if (!HasAuthority())
 		return;
-	// 무기 상태 드랍으로 변경
-	SetWeaponState(EWeaponState::EWS_Dropped);
-	FDetachmentTransformRules DetachRules(EDetachmentRule::KeepWorld, true);
-	SetWeaponState(EWeaponState::EWS_Initial);
+
 	GetAreaSphere()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetAreaSphere()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
-	FlagMesh->SetSimulatePhysics(false);
-	FlagMesh->SetEnableGravity(false);
-	FlagMesh->DetachFromComponent(DetachRules);
+	
 	SetOwner(nullptr);
 	BlasterOwnerCharacter = nullptr;
 	BlasterOwnerController = nullptr;
-
-	SetActorTransform(InitialTrnasform);
 }
 
 void AFlag::OnEquipped()

@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "BlasterGameMode.h"
+#include "TeamsGameMode.h"
 #include "CapturePointGameMode.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class BLASTER_API ACapturePointGameMode : public ABlasterGameMode
+class BLASTER_API ACapturePointGameMode : public ATeamsGameMode
 {
 	GENERATED_BODY()
 
@@ -18,6 +18,6 @@ public:
 	virtual void PlayerEliminated(class ABlasterCharacter* ElimmedCharacter, class ABlasterPlayerController* VictimController,
 		class ABlasterPlayerController* AttackerController) override;
 
-	//void PointCaptured(class AFlag* Flag, class AFlagZone* Zone);
+	void PointCaptured(float BlueTeamCount, float RedTeamCount);
 	
 };

@@ -41,6 +41,12 @@ UFootStepAnimNotify::UFootStepAnimNotify()
 	if (Snow.Succeeded())
 		m_Snow = Snow.Object;
 
+
+	static ConstructorHelpers::FObjectFinder<USoundBase> Sand(TEXT("SoundCue'/Game/Asset/Sounds/Footsteps/SCue_FS_Sand.SCue_FS_Sand'"));
+
+	if (Sand.Succeeded())
+		m_Sand = Sand.Object;
+
 }
 
 void UFootStepAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, 
@@ -118,6 +124,9 @@ TObjectPtr<USoundBase> UFootStepAnimNotify::SelectSoundBase()
 		return m_Snow;
 		break;
 	case SurfaceType6:	// ¿ìµå
+		break;
+	case SurfaceType7:
+		return m_Sand;
 		break;
 	}
 
