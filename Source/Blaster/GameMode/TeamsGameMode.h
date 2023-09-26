@@ -23,6 +23,7 @@ public:
 	virtual float CalculateDamage(AController* Attacker, AController* Victim, float BaseDamage) override;
 	virtual void PlayerEliminated(class ABlasterCharacter* ElimmedCharacter, class ABlasterPlayerController* VictimController,
 		class ABlasterPlayerController* AttackerController) override;
+	virtual void RequestRespawn(class ACharacter* ElimmedCharacter, AController* ElimmedController) override;
 	
 protected:
 	// 경기가 시작될때 실행되는 함수

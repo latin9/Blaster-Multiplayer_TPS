@@ -102,6 +102,18 @@ void ATeamsGameMode::PlayerEliminated(ABlasterCharacter* ElimmedCharacter, ABlas
 	}
 }
 
+void ATeamsGameMode::RequestRespawn(ACharacter* ElimmedCharacter, AController* ElimmedController)
+{
+	Super::RequestRespawn(ElimmedCharacter, ElimmedController);
+
+	ABlasterPlayerController* PlayerController = Cast<ABlasterPlayerController>(ElimmedController);
+
+	if (PlayerController)
+	{
+		PlayerController->MulticastWeaponSelectOverlay();
+	}
+}
+
 void ATeamsGameMode::HandleMatchHasStarted()
 {
 	Super::HandleMatchHasStarted();

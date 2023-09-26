@@ -21,3 +21,26 @@ enum class EWeaponType : uint8
 
 	EWT_MAX UMETA(DisplayName = "DefaulMAX")
 };
+
+UENUM(BlueprintType)
+enum class EMainWeapon_Type : uint8
+{
+	EMW_NONE UMETA(DisplayName = "None"),
+	EMW_AssaultRifle UMETA(DisplayName = "AssaultRifle"),
+	EMW_SniperRifle UMETA(DisplayName = "SniperRifle"),
+	EMW_RocketLauncher UMETA(DisplayName = "RocketLauncher"),
+	EMW_Shotgun UMETA(DisplayName = "Shotgun"),
+
+	EMW_MAX UMETA(DisplayName = "DefaultMAX")
+};
+
+UENUM(BlueprintType)
+enum class ESubWeapon_Type : uint8
+{
+	EMW_NONE UMETA(DisplayName = "None"),
+	ESW_Pistol UMETA(DisplayName = "Pistol"),
+	ESW_SMG UMETA(DisplayName = "ESW_SMG"),
+	ESW_GrenadeLauncher UMETA(DisplayName = "GrenadeLauncher"),
+
+	ESW_MAX UMETA(DisplayName = "DefaultMAX")
+};

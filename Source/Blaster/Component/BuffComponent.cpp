@@ -24,7 +24,7 @@ void UBuffComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	HealRampUp(DeltaTime);
-	ShieldampUp(DeltaTime);
+	ShieldRampUp(DeltaTime);
 }
 
 void UBuffComponent::Heal(float HealAmount, float HealingTime)
@@ -138,7 +138,7 @@ void UBuffComponent::HealRampUp(float DeltaTime)
 	}
 }
 
-void UBuffComponent::ShieldampUp(float DeltaTime)
+void UBuffComponent::ShieldRampUp(float DeltaTime)
 {
 	if (!bShieldReplenishing || Character == nullptr || Character->IsElimmed())
 		return;

@@ -30,6 +30,10 @@ public:
 	UPROPERTY(meta = (BindWidget))
 	class UTextBlock* AnnouncementVictimText;
 
+	// 위치를 알아내기 위한 박스
+	UPROPERTY(meta = (BindWidget))
+		class UHorizontalBox* ElimAnnouncementImageBox;
+
 	void SetElimAnnouncementText(FString AtttackerName, FString VictimName);
 
 

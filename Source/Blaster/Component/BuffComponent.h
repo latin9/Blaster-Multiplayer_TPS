@@ -57,7 +57,7 @@ public:
 
 protected:
 	void HealRampUp(float DeltaTime);
-	void ShieldampUp(float DeltaTime);
+	void ShieldRampUp(float DeltaTime);
 
 private:
 	void ResetSpeeds();

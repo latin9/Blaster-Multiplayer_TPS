@@ -19,7 +19,9 @@
 #include "../Weapon/Shotgun.h"
 
 UCombatComponent::UCombatComponent()	:
-	bCanFire(true)
+	bCanFire(true),
+	Grenades(4),
+	MaxGrenades(4)
 {
 	PrimaryComponentTick.bCanEverTick = true;
 
@@ -48,7 +50,6 @@ void UCombatComponent::BeginPlay()
 			InitializeCarriedAmmo();
 		}
 	}
-
 }
 
 void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -280,6 +281,10 @@ void UCombatComponent::FireProjectileWeapon()
 		// 서버가 아닐때 실행해야한다 로컬은 이렇게 안 하면 서버는 총알두 발을 발사하게됨
 		if (!Character->HasAuthority())
 			LocalFire(HitTarget);
+
+
+		UE_LOG(LogTemp, Error, TEXT("FireProjectileWeapon Server FireDelay : %f"), EquippedWeapon->FireDelay);
+		UE_LOG(LogTemp, Error, TEXT("FireProjectileWeapon Server Damage : %f"), EquippedWeapon->GetDamage());
 		ServerFire(HitTarget, EquippedWeapon->FireDelay);
 	}
 }
@@ -374,7 +379,10 @@ bool UCombatComponent::ServerFire_Validate(const FVector_NetQuantize& TraceHitTa
 {
 	if (EquippedWeapon)
 	{
-		bool bNearlyEqual = FMath::IsNearlyEqual(EquippedWeapon->FireDelay, FireDelay, 0.001f);
+		UE_LOG(LogTemp, Error, TEXT("Server FireDelay : %f"), FireDelay);
+		UE_LOG(LogTemp, Error, TEXT("EquipWeapon FireDelay : %f"), EquippedWeapon->FireDelay);
+		UE_LOG(LogTemp, Error, TEXT("EquipWeapon Damage : %f"), EquippedWeapon->GetDamage());
+		bool bNearlyEqual = FMath::IsNearlyEqual(EquippedWeapon->FireDelay, FireDelay, SMALL_NUMBER);
 		return bNearlyEqual;
 	}
 
@@ -399,7 +407,7 @@ bool UCombatComponent::ServerShotgunFire_Validate(const TArray<FVector_NetQuanti
 {
 	if (EquippedWeapon)
 	{
-		bool bNearlyEqual = FMath::IsNearlyEqual(EquippedWeapon->FireDelay, FireDelay, 0.001f);
+		bool bNearlyEqual = FMath::IsNearlyEqual(EquippedWeapon->FireDelay, FireDelay, SMALL_NUMBER);
 		return bNearlyEqual;
 	}
 

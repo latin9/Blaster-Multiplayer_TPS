@@ -9,6 +9,7 @@
 #include "Components/TimelineComponent.h"
 #include "../BlasterType/CombatState.h"
 #include "../BlasterType/Team.h"
+#include "../Weapon/WeaponTypes.h"
 #include "BlasterCharacter.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLeftGame);
@@ -23,6 +24,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void PostInitializeComponents()	override;
+	virtual void PossessedBy(AController* NewController) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	void PlayFireMontage(bool bAiming);
 	void PlayReloadMontage();
@@ -71,6 +73,9 @@ public:
 
 	void SetTeamColor(ETeam _Team);
 
+	UFUNCTION(Server, Reliable)
+		void ServerHandleWeaponSelection(EMainWeapon_Type MainWeapon_Type, ESubWeapon_Type SubWeapon_Type);
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -108,7 +113,6 @@ protected:
 
 	void SetSpawnPoint();
 	void OnPlayerStateInitialized();
-
 public:
 
 protected:
@@ -133,14 +137,14 @@ private:
 	FString LocalPlayerName = TEXT("Unknown Player");
 
 	// 서버에서 변경될때 모든 클라이언트에서 변경되고 무기에 대한 포인터를 복제할 수 있다.
-	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
+	//UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
 	class AWeapon* OverlappingWeapon;
 
 	// LastWeapon에는 복제되기전의 OverlappingWeapon이 들어간다
 	UFUNCTION()
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
-
+	float MouseSensitivity = 0.5f;
 	// BlasterComponents
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UCombatComponent* Combat;
@@ -354,6 +358,13 @@ private:
 
 	bool bLeftGame = false;
 
+	bool bUpdateHUDAmmo = false;
+
+	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"))
+		TMap<EMainWeapon_Type, TSubclassOf<class AWeapon>> MapMainWeapons;
+
+	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"))
+		TMap<ESubWeapon_Type, TSubclassOf<class AWeapon>> MapSubWeapons;
 
 public:
 	void SetOverlappingWeapon(AWeapon* Weapon);
@@ -405,6 +416,7 @@ public:
 	FORCEINLINE class ULagCompensationComponent* GetLagCompensationComponent() const { return LagCompensation; }
 	FORCEINLINE bool IsSwappingFinished() const { return bFinishedSwapping; }
 	FORCEINLINE void SetSwappingFinished(bool _IsFinished) { bFinishedSwapping = _IsFinished; }
+	FORCEINLINE void SetMouseSensitivity(float _Sensitivity) { MouseSensitivity = _Sensitivity; }
 	class UBoxComponent* GetHitColisionBoxFromFName(const FName& Name);
 	bool IsHoldingTheFlag() const;
 	ETeam GetTeam();

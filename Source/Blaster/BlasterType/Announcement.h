@@ -8,7 +8,7 @@ namespace Announcement
 	const FString PlayersTiedForTheWin(TEXT("Players tied for the win : "));
 	const FString TeamsTiedForTheWind(TEXT("Teams tied for the win : "));
 	const FString RedTeam(TEXT("Red team"));
-	const FString BlueTeam(TEXT("Blue tema"));
+	const FString BlueTeam(TEXT("Blue team"));
 	const FString RedTeamWins(TEXT("Red team wins"));
 	const FString BlueTeamWins(TEXT("Blue team wins"));
 }

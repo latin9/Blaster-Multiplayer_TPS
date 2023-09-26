@@ -4,14 +4,20 @@
 #include "ReturnToMainMenu.h"
 #include "GameFramework/PlayerController.h"
 #include "Components/Button.h"
+#include "Components/Slider.h"
+#include "Components/EditableTextBox.h"
 #include "MultiplayerSessionsSubsystem.h"
 #include "GameFramework/GameModeBase.h"
 #include "../Character/BlasterCharacter.h"
+#include "Kismet/KismetTextLibrary.h"
 
 bool UReturnToMainMenu::Initialize()
 {
 	if (!Super::Initialize())
 		return false;
+
+	MouseSensitivityBar->OnValueChanged.AddDynamic(this, &UReturnToMainMenu::ChangeSensitivityBar);
+	MouseSensitivityValue->OnTextChanged.AddDynamic(this, &UReturnToMainMenu::ChangeSensitivityTextValue);
 
 	return true;
 }
@@ -63,7 +69,6 @@ void UReturnToMainMenu::MenuSetup()
 			PlayerController->SetShowMouseCursor(true);
 		}
 	}
-
 
 	// 리턴 버튼이 있다면 콜백함수 등록 바인딩이 안된 경우에만
 	if (ReturnButton && !ReturnButton->OnClicked.IsBound())
@@ -136,6 +141,44 @@ void UReturnToMainMenu::ReturnButtonClicked()
 				ReturnButton->SetIsEnabled(true);
 			}
 		}
+	}
+}
+
+void UReturnToMainMenu::ChangeSensitivityBar(float Value)
+{
+	MouseSensitivityValue->SetText(FText::FromString(FString::Printf(TEXT("%f"), Value)));
+
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		PlayerController = PlayerController == nullptr ? World->GetFirstPlayerController() : PlayerController;
+		if (PlayerController == nullptr)
+			return;
+		ABlasterCharacter* Character = Cast<ABlasterCharacter>(PlayerController->GetCharacter());
+
+		if (Character == nullptr)
+			return;
+
+		Character->SetMouseSensitivity(Value);
+	}
+}
+
+void UReturnToMainMenu::ChangeSensitivityTextValue(const FText& Text)
+{
+	MouseSensitivityBar->SetValue(FCString::Atof(*Text.ToString().TrimQuotes()));
+
+	UWorld* World = GetWorld();
+	if (World)
+	{
+		PlayerController = PlayerController == nullptr ? World->GetFirstPlayerController() : PlayerController;
+		if (PlayerController == nullptr)
+			return;
+		ABlasterCharacter* Character = Cast<ABlasterCharacter>(PlayerController->GetCharacter());
+
+		if (Character == nullptr)
+			return;
+
+		Character->SetMouseSensitivity(MouseSensitivityBar->GetValue());
 	}
 }
 

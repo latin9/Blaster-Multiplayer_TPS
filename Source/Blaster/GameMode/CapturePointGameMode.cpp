@@ -3,16 +3,42 @@
 
 #include "CapturePointGameMode.h"
 #include "../GameState/BlasterGameState.h"
+#include "../PlayerController/BlasterPlayerController.h"
 
-void ACapturePointGameMode::PlayerEliminated(ABlasterCharacter* ElimmedCharacter, ABlasterPlayerController* VictimController, 
+void ACapturePointGameMode::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	BlasterGameState = BlasterGameState == nullptr ? GetGameState<ABlasterGameState>() : BlasterGameState;
+
+	if (BlasterGameState)
+	{
+		if (static_cast<int>(BlasterGameState->RedTeamScore) == 100 ||
+			static_cast<int>(BlasterGameState->BlueTeamScore) == 100)
+		{
+			SetMatchState(MatchState::Cooldown);
+		}
+	}
+}
+
+void ACapturePointGameMode::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+}
+
+void ACapturePointGameMode::PlayerEliminated(ABlasterCharacter* ElimmedCharacter, ABlasterPlayerController* VictimController,
 	ABlasterPlayerController* AttackerController)
 {
 	ABlasterGameMode::PlayerEliminated(ElimmedCharacter, VictimController, AttackerController);
 }
 
+void ACapturePointGameMode::RequestRespawn(ACharacter* ElimmedCharacter, AController* ElimmedController)
+{
+	Super::RequestRespawn(ElimmedCharacter, ElimmedController);
+}
+
 void ACapturePointGameMode::PointCaptured(float BlueTeamCount, float RedTeamCount)
 {
-	ABlasterGameState* BlasterGameState = Cast<ABlasterGameState>(GameState);
+	BlasterGameState = BlasterGameState == nullptr ? GetGameState<ABlasterGameState>() : BlasterGameState;
 	if (BlasterGameState)
 	{
 		float BlueTeamAmmount = BlueTeamCount - RedTeamCount;

@@ -7,6 +7,7 @@
 #include "Announcement.h"
 #include "ElimAnnouncement.h"
 #include "ChatOverlay.h"
+#include "WeaponSelectOverlay.h"
 #include "Components/HorizontalBox.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
@@ -51,8 +52,8 @@ void ABlasterHUD::AddElimAnnouncement(FString Attacker, FString Victim)
 
 		if (ElimAnnouncementWidget)
 		{
-			ElimAnnouncementWidget->SetElimAnnouncementText(Attacker, Victim);
 			ElimAnnouncementWidget->AddToViewport();
+			ElimAnnouncementWidget->SetElimAnnouncementText(Attacker, Victim);
 
 			// 기존에 출력되어있는 메시지가 있다면 위치를 옮긴다.
 			for (UElimAnnouncement* Msg: ElimMessages)
@@ -62,8 +63,10 @@ void ABlasterHUD::AddElimAnnouncement(FString Attacker, FString Victim)
 					// UWidgetLayoutLibrary를 활용하여 해당 위젯의 위치를 알아낼 수 있다.
 					UCanvasPanelSlot* AttackCanvasSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(Msg->AnnouncementAttackerBox);
 					UCanvasPanelSlot* VictimCanvasSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(Msg->AnnouncementVictimBox);
+					UCanvasPanelSlot* KillImageCanvasSlot = UWidgetLayoutLibrary::SlotAsCanvasSlot(Msg->ElimAnnouncementImageBox);
 					ElimAnnouncementChangePos(AttackCanvasSlot);
 					ElimAnnouncementChangePos(VictimCanvasSlot);
+					ElimAnnouncementChangePos(KillImageCanvasSlot);
 				}
 			}
 			ElimMessages.Add(ElimAnnouncementWidget);
@@ -86,11 +89,25 @@ void ABlasterHUD::AddChatOverlay()
 {
 	OwningPlayer = OwningPlayer == nullptr ? GetOwningPlayerController() : OwningPlayer;
 
-	if (OwningPlayer && ChatOverlayClass)
+	if (OwningPlayer && ChatOverlayClass && ChatOverlay == nullptr)
 	{
 		ChatOverlay = CreateWidget<UChatOverlay>(OwningPlayer, ChatOverlayClass);
 		if (ChatOverlay)
 			ChatOverlay->AddToViewport();
+	}
+}
+
+void ABlasterHUD::AddWeaponSelectOverlay()
+{
+	OwningPlayer = OwningPlayer == nullptr ? GetOwningPlayerController() : OwningPlayer;
+
+	if (OwningPlayer && WeaponSelectOverlayClass)
+	{
+		WeaponSelectOverlay = CreateWidget<UWeaponSelectOverlay>(OwningPlayer, WeaponSelectOverlayClass);
+		if (WeaponSelectOverlay)
+		{
+			WeaponSelectOverlay->AddToViewport();
+		}
 	}
 }
 

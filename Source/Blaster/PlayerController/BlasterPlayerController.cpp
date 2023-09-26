@@ -9,6 +9,7 @@
 #include "../Character/BlasterCharacter.h"
 #include "Net/UnrealNetwork.h"
 #include "../GameMode/BlasterGameMode.h"
+#include "../GameMode/CapturePointGameMode.h"
 #include "../HUD/Announcement.h"
 #include "Kismet/GameplayStatics.h"
 #include "../Component/CombatComponent.h"
@@ -25,7 +26,16 @@ void ABlasterPlayerController::BeginPlay()
 	Super::BeginPlay();
 
 	BlasterHUD = GetHUD<ABlasterHUD>();
-	
+
+	// 점령전 or 팀데스매치
+	ACapturePointGameMode* CapturePointGameMode = Cast<ACapturePointGameMode>(UGameplayStatics::GetGameMode(this));
+
+	/*if (CapturePointGameMode)
+	{
+		UE_LOG(LogTemp, Error, TEXT("abb"));
+	}*/
+	UE_LOG(LogTemp, Error, TEXT("abb"));
+
 	ServerCheckMatchState();
 }
 
@@ -154,15 +164,33 @@ void ABlasterPlayerController::ChangeUIMode()
 
 void ABlasterPlayerController::OnRep_ShowTeamScores()
 {
+	UE_LOG(LogTemp, Error, TEXT("OnRep_ShowTeamScores Start"));
 	if (bShowTeamScores)
 	{
 		InitTeamScores();
-		HideHUDScore();
+		//HideHUDScore();
 	}
 	else
 	{
+		UE_LOG(LogTemp, Error, TEXT("bShowTeamScores is false"));
 		HideTeamScores();
 	}
+}
+
+void ABlasterPlayerController::LocalWeaponSelectOverlay()
+{
+	BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
+	if (BlasterHUD == nullptr)
+		return;
+
+	BlasterHUD->AddWeaponSelectOverlay();
+	SetInputMode(FInputModeUIOnly());
+	SetShowMouseCursor(true);
+}
+
+void ABlasterPlayerController::MulticastWeaponSelectOverlay_Implementation()
+{
+	LocalWeaponSelectOverlay();
 }
 
 
@@ -301,7 +329,7 @@ void ABlasterPlayerController::SetHUDShield(float Shield, float MaxShield)
 		const float ShieldPercent = Shield / MaxShield;
 		BlasterHUD->GetCharacterOverlay()->ShieldBar->SetPercent(ShieldPercent);
 		// 정수로 반올림해야함
-		FString ShieldText = FString::Printf(TEXT("%d / %d"), FMath::CeilToInt(Shield), FMath::CeilToInt(MaxShield));
+		FString ShieldText = FString::Printf(TEXT("%d / %d"), FMath::FloorToInt(Shield), FMath::CeilToInt(MaxShield));
 		BlasterHUD->GetCharacterOverlay()->ShieldText->SetText(FText::FromString(ShieldText));
 	}
 	else
@@ -314,7 +342,6 @@ void ABlasterPlayerController::SetHUDShield(float Shield, float MaxShield)
 
 void ABlasterPlayerController::SetHUDScore(float Score)
 {
-	UE_LOG(LogTemp, Error, TEXT("SetHUDSCore Start"));
 	BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
 
 	bool bHUDValid = BlasterHUD &&
@@ -475,8 +502,8 @@ void ABlasterPlayerController::SetHUDGrenades(int32 Grenades)
 
 void ABlasterPlayerController::BroadcastElim(APlayerState* Attacker, APlayerState* Victim)
 {
-	//ClientElimAnnouncement(Attacker, Victim);
-	if (Attacker && Victim)
+	ClientElimAnnouncement(Attacker, Victim);
+	/*if (Attacker && Victim)
 	{
 		BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
 
@@ -484,7 +511,7 @@ void ABlasterPlayerController::BroadcastElim(APlayerState* Attacker, APlayerStat
 		{
 			BlasterHUD->AddElimAnnouncement(Attacker->GetPlayerName(), Victim->GetPlayerName());
 		}
-	}
+	}*/
 }
 
 void ABlasterPlayerController::SendMessage(const FText& Message)
@@ -695,6 +722,16 @@ void ABlasterPlayerController::PollInit()
 			}
 		}
 	}
+	if (bShowTeamScores && bBeginValid)
+	{
+		bBeginValid = false;
+		InitTeamScores();
+	}
+	else if(!bShowTeamScores && bBeginValid)
+	{
+		bBeginValid = false;
+		HideTeamScores();
+	}
 }
 
 void ABlasterPlayerController::ServerRequestServerTime_Implementation(float TimeOfClientRequest)
@@ -770,11 +807,21 @@ void ABlasterPlayerController::OnRep_MatchState()
 
 void ABlasterPlayerController::HandleMatchHasStarted(bool bTeamMatch)
 {
+	bBeginValid = true;
 	// HandleMatchHasStarted는 서버에서만 실행이 된다 그래서
 	// bShowTeamScores라는 변수를 복제하여 OnRep_ShowTeamScores 함수를이용하여
 	// 클라에서도 스코어 텍스트의 가려짐 판단을 할 수 있도록 여기서 매개변수로 들어온 값을 넣어주는것
+	// 근데 안돼서 임시조치로 bBeginValid = true; 설정해서 PollInit에서 HUD Hide설정
 	if (HasAuthority())
+	{
+		UE_LOG(LogTemp, Error, TEXT("bShowTeamScores : %d"), bShowTeamScores);
+		// 기존 값이랑 동일하게 되면 OnRep함수가 실행이 안된다 변경되야만 하기 때문에 강제로 반대로 바꿔준다
+		bShowTeamScores = !bShowTeamScores;
+		UE_LOG(LogTemp, Error, TEXT("bShowTeamScores : %d"), bShowTeamScores);
+		// 그 이후 변경할 값으로 변경
 		bShowTeamScores = bTeamMatch;
+		UE_LOG(LogTemp, Error, TEXT("bShowTeamScores : %d"), bShowTeamScores);
+	}
 
 	BlasterHUD = BlasterHUD == nullptr ? GetHUD<ABlasterHUD>() : BlasterHUD;
 	if (BlasterHUD)
@@ -785,7 +832,8 @@ void ABlasterPlayerController::HandleMatchHasStarted(bool bTeamMatch)
 		if (BlasterHUD->GetChatOverlay() == nullptr)
 		{
 			BlasterHUD->AddChatOverlay();
-			BlasterHUD->GetChatOverlay()->SetVisibility(ESlateVisibility::Hidden);
+			if (BlasterHUD->GetChatOverlay())
+				BlasterHUD->GetChatOverlay()->SetVisibility(ESlateVisibility::Hidden);
 		}
 
 		SetInputMode(FInputModeGameOnly());
@@ -795,10 +843,16 @@ void ABlasterPlayerController::HandleMatchHasStarted(bool bTeamMatch)
 		{
 			BlasterHUD->GetAnnouncement()->SetVisibility(ESlateVisibility::Hidden);
 		}
+		
+		if (BlasterHUD->GetWeaponSelectOverlay() == nullptr)
+		{
+			BlasterHUD->AddWeaponSelectOverlay();
+			SetInputMode(FInputModeUIOnly());
+			SetShowMouseCursor(true);
+		}
 
 		if (!HasAuthority())
 			return;
-
 		if (bTeamMatch)
 		{
 			InitTeamScores();

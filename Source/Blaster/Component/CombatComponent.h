@@ -253,13 +253,13 @@ private:
 
 
 	UPROPERTY(ReplicatedUsing = OnRep_Grenades)
-	int32 Grenades = 4;
+	int32 Grenades;
 	
 	UFUNCTION()
 	void OnRep_Grenades();
 
 	UPROPERTY(EditAnywhere)
-	int32 MaxGrenades = 4;
+	int32 MaxGrenades;
 
 	void UpdateHUDGrenades();
 

@@ -18,6 +18,8 @@
 #include "../Blaster.h"
 #include "../PlayerController/BlasterPlayerController.h"
 #include "../GameMode/BlasterGameMode.h"
+#include "../GameMode/CapturePointGameMode.h"
+#include "../GameMode/TeamsGameMode.h"
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundCue.h"
@@ -289,7 +291,7 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	// 어떤 클라이언트가 이 변수를 복제할지 제어할 수 있다.
 	// 속성이 오직 소유자에게만 복제되어야 함을 의미
 	// .즉, OverlappingWeapon 속성은 ABlasterCharacter를 소유한 클라이언트에게만 복제될 것입니다.
-	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
+	//DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
 	DOREPLIFETIME(ABlasterCharacter, Health);
 	DOREPLIFETIME(ABlasterCharacter, Shield);
 	DOREPLIFETIME(ABlasterCharacter, bDisableGameplay);
@@ -431,10 +433,12 @@ void ABlasterCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
+
 	if (Combat)
 	{
 		Combat->Character = this;
 	}
+
 
 	if (Buff)
 	{
@@ -450,6 +454,16 @@ void ABlasterCharacter::PostInitializeComponents()
 		{
 			LagCompensation->Controller = Cast<ABlasterPlayerController>(Controller);
 		}
+	}
+}
+
+void ABlasterCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	if (Combat)
+	{
+		Combat->UpdateHUDGrenades();
 	}
 }
 
@@ -539,7 +553,7 @@ void ABlasterCharacter::PlaySwapMontage()
 
 void ABlasterCharacter::PlayHitReactMontage()
 {
-	if (Combat == nullptr || Combat->EquippedWeapon == nullptr)
+	if (Combat == nullptr || Combat->EquippedWeapon == nullptr || Combat->CombatState != ECombatState::ECS_Unoccupied)
 		return;
 
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -637,12 +651,12 @@ void ABlasterCharacter::MoveRight(float Value)
 
 void ABlasterCharacter::Turn(float Value)
 {
-	AddControllerYawInput(Value);
+	AddControllerYawInput(Value * MouseSensitivity);
 }
 
 void ABlasterCharacter::LookUp(float Value)
 {
-	AddControllerPitchInput(Value);
+	AddControllerPitchInput(Value * MouseSensitivity);
 }
 
 void ABlasterCharacter::EquipButtonPressed()
@@ -1020,33 +1034,31 @@ void ABlasterCharacter::UpdateHUDAmmo()
 {
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
 
-	if (BlasterPlayerController && Combat && Combat->EquippedWeapon)
+	if (BlasterPlayerController && Combat && Combat->EquippedWeapon && bUpdateHUDAmmo)
 	{
 		BlasterPlayerController->SetHUDCarriedAmmo(Combat->CarriedAmmo);
 		BlasterPlayerController->SetHUDWeaponAmmo(Combat->EquippedWeapon->GetAmmo());
+		bUpdateHUDAmmo = false;
+	}
+	else
+	{
+		bUpdateHUDAmmo = true;
 	}
 }
 
 void ABlasterCharacter::SpawnDefaultWeapon()
 {
 	BlasterGameMode = BlasterGameMode == nullptr ? GetWorld()->GetAuthGameMode<ABlasterGameMode>() : BlasterGameMode;
+	ATeamsGameMode* TeamsGameMode = GetWorld()->GetAuthGameMode<ATeamsGameMode>();
 
 	UWorld* World = GetWorld();
 
 	// 블라스터 게임모드가 널이 아니라면 BlasterLevel이라는것을 알 수 있다
 	// 로비나 TitleLevel은 BlasterGameMode를 사용 안 하기때문에 널이 됨
-	if (BlasterGameMode && World && !bElimmed && DefaultWeaponClass)
+	if (BlasterGameMode && !TeamsGameMode && World && !bElimmed && DefaultWeaponClass)
 	{
 		AWeapon* StartingWeapon =  World->SpawnActor<AWeapon>(DefaultWeaponClass);
 
-		if (HasAuthority())
-		{
-			StartingWeapon->SetUseServerSideRewind(false);
-		}
-		else
-		{
-			StartingWeapon->SetUseServerSideRewind(true);
-		}
 		StartingWeapon->bDestroyWeapon = true;
 
 		if (Combat)
@@ -1055,6 +1067,7 @@ void ABlasterCharacter::SpawnDefaultWeapon()
 		}
 	}
 }
+
 
 void ABlasterCharacter::PollInit()
 {
@@ -1074,7 +1087,10 @@ void ABlasterCharacter::PollInit()
 			}
 		}
 	}
-
+	if (bUpdateHUDAmmo)
+	{
+		UpdateHUDAmmo();
+	}
 }
 
 void ABlasterCharacter::RotateInPlace(float DeltaTime)
@@ -1179,9 +1195,55 @@ void ABlasterCharacter::OnPlayerStateInitialized()
 {
 	// 0을 넣어 갱신만 해준다.
 	/*BlasterPlayerState->AddToScore(0.f);
-	BlasterPlayerState->AddToDefeats(0);*/
+	BlasterPlayerState->AddToDefeats(0.f);*/
 	SetTeamColor(BlasterPlayerState->GetTeam());
 	SetSpawnPoint();
+}
+
+void ABlasterCharacter::ServerHandleWeaponSelection_Implementation(EMainWeapon_Type MainWeapon_Type, ESubWeapon_Type SubWeapon_Type)
+{
+	UWorld* World = GetWorld();
+
+	// 기본 무기 설정
+	AWeapon* MainWeapon = World->SpawnActor<AWeapon>(MapMainWeapons[EMainWeapon_Type::EMW_AssaultRifle]);
+	AWeapon* SubWeapon = World->SpawnActor<AWeapon>(MapSubWeapons[ESubWeapon_Type::ESW_Pistol]);
+
+	switch (MainWeapon_Type)
+	{
+	case EMainWeapon_Type::EMW_AssaultRifle:
+		MainWeapon = World->SpawnActor<AWeapon>(MapMainWeapons[EMainWeapon_Type::EMW_AssaultRifle]);
+		break;
+	case EMainWeapon_Type::EMW_SniperRifle:
+		MainWeapon = World->SpawnActor<AWeapon>(MapMainWeapons[EMainWeapon_Type::EMW_SniperRifle]);
+		break;
+	case EMainWeapon_Type::EMW_RocketLauncher:
+		MainWeapon = World->SpawnActor<AWeapon>(MapMainWeapons[EMainWeapon_Type::EMW_RocketLauncher]);
+		break;
+	case EMainWeapon_Type::EMW_Shotgun:
+		MainWeapon = World->SpawnActor<AWeapon>(MapMainWeapons[EMainWeapon_Type::EMW_Shotgun]);
+		break;
+	}
+
+	switch (SubWeapon_Type)
+	{
+	case ESubWeapon_Type::ESW_Pistol:
+		SubWeapon = World->SpawnActor<AWeapon>(MapSubWeapons[ESubWeapon_Type::ESW_Pistol]);
+		break;
+	case ESubWeapon_Type::ESW_SMG:
+		SubWeapon = World->SpawnActor<AWeapon>(MapSubWeapons[ESubWeapon_Type::ESW_SMG]);
+		break;
+	case ESubWeapon_Type::ESW_GrenadeLauncher:
+		SubWeapon = World->SpawnActor<AWeapon>(MapSubWeapons[ESubWeapon_Type::ESW_GrenadeLauncher]);
+		break;
+	}
+	MainWeapon->bDestroyWeapon = true;
+	SubWeapon->bDestroyWeapon = true;
+
+	if (Combat)
+	{
+		Combat->EquipWeapon(MainWeapon);
+		Combat->EquipWeapon(SubWeapon);
+	}
 }
 
 void ABlasterCharacter::UpdateDissolveMaterial(float DissolveValue)

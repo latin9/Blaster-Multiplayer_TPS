@@ -55,6 +55,11 @@ public:
 	void SetHUDRedTeamScore(int32 RedScore);
 	void SetHUDBlueTeamScore(int32 BlueScore);
 
+	void LocalWeaponSelectOverlay();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastWeaponSelectOverlay();
+
 public:
 	void SwitchViewToOtherPlayer();
 
@@ -112,6 +117,7 @@ protected:
 	UFUNCTION()
 	void OnRep_ShowTeamScores();
 
+
 private:
 	UPROPERTY()
 	class ABlasterHUD* BlasterHUD;
@@ -160,6 +166,8 @@ private:
 	bool bInitializeWeaponAmmo = false;
 
 	bool bHideHUDScore = false;
+
+	bool bBeginValid = false;
 
 	// гн
 	float HighPingRunningTime = 0.f;

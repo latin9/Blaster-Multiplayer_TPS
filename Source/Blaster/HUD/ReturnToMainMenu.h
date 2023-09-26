@@ -18,6 +18,12 @@ private:
 	UPROPERTY(meta = (BindWidget))
 	class UButton* ReturnButton;
 
+	UPROPERTY(meta = (BindWidget))
+	class USlider* MouseSensitivityBar;
+
+	UPROPERTY(meta = (BindWidget))
+	class UEditableTextBox* MouseSensitivityValue;
+
 	UPROPERTY()
 	class UMultiplayerSessionsSubsystem* MultiplayerSessionsSubsystem;
 
@@ -32,6 +38,12 @@ protected:
 
 	UFUNCTION()
 	void OnPlayerLeftGame();
+
+	UFUNCTION()
+	void ChangeSensitivityBar(float Value);
+
+	UFUNCTION()
+	void ChangeSensitivityTextValue(const FText& Text);
 
 public:
 	void MenuSetup();

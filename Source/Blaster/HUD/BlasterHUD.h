@@ -54,6 +54,7 @@ public:
 	void AddAnnouncement();
 	void AddElimAnnouncement(FString Attacker, FString Victim);
 	void AddChatOverlay();
+	void AddWeaponSelectOverlay();
 
 public:
 	UPROPERTY(EditAnywhere, Category = "Player Stats")
@@ -64,6 +65,9 @@ public:
 	
 	UPROPERTY(EditAnywhere, Category = "Chat")
 	TSubclassOf<class UUserWidget> ChatOverlayClass;
+	
+	UPROPERTY(EditAnywhere, Category = "Weapon")
+	TSubclassOf<class UUserWidget> WeaponSelectOverlayClass;
 private:
 	UPROPERTY()
 	class APlayerController* OwningPlayer;
@@ -85,7 +89,7 @@ private:
 	TSubclassOf<class UElimAnnouncement> ElimAnnouncementClass;
 
 	UPROPERTY(EditAnywhere)
-	float ElimAnnouncementTime = 3.f;
+	float ElimAnnouncementTime = 20.f;
 
 	UFUNCTION()
 	void ElimAnnouncementTimerFinished(class UElimAnnouncement* MsgToRemove);
@@ -98,9 +102,13 @@ private:
 	UPROPERTY()
 	class UChatOverlay* ChatOverlay;
 
+	UPROPERTY()
+	class UWeaponSelectOverlay* WeaponSelectOverlay;
+
 public:
 	FORCEINLINE void SetHUDPackage(const FHUDPackage& Package) { HUDPackage = Package; }
 	FORCEINLINE class UCharacterOverlay* GetCharacterOverlay() const { return CharacterOverlay; }
 	FORCEINLINE class UAnnouncement* GetAnnouncement() const { return Announcement; }
 	FORCEINLINE class UChatOverlay* GetChatOverlay() const { return ChatOverlay; }
+	FORCEINLINE class UWeaponSelectOverlay* GetWeaponSelectOverlay() const { return WeaponSelectOverlay; }
 };
