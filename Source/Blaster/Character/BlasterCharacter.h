@@ -40,13 +40,16 @@ public:
 	// 서버에서만 실행되면 안된다.
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastElim(bool bPlayerLeftGame);
+	UFUNCTION(Client, Reliable)
+	void ClientElimDestroyed();
+
+	void HandleElimDestroyed();
 	
 	/*UFUNCTION(Server, Reliable)
 	void ServerElimDestroyed();
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastElimDestroyed();*/
-
 
 	virtual void Destroyed() override;
 
@@ -57,6 +60,7 @@ public:
 	void UpdateHUDHealth();
 	void UpdateHUDShield();
 	void UpdateHUDAmmo();
+	void UpdateHUDGrenade();
 
 	void SpawnDefaultWeapon();
 	
@@ -359,6 +363,7 @@ private:
 	bool bLeftGame = false;
 
 	bool bUpdateHUDAmmo = false;
+	bool bUpdateHUDGrenade = false;
 
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"))
 		TMap<EMainWeapon_Type, TSubclassOf<class AWeapon>> MapMainWeapons;

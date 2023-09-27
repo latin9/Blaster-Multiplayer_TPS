@@ -27,15 +27,6 @@ void ABlasterPlayerController::BeginPlay()
 
 	BlasterHUD = GetHUD<ABlasterHUD>();
 
-	// 점령전 or 팀데스매치
-	ACapturePointGameMode* CapturePointGameMode = Cast<ACapturePointGameMode>(UGameplayStatics::GetGameMode(this));
-
-	/*if (CapturePointGameMode)
-	{
-		UE_LOG(LogTemp, Error, TEXT("abb"));
-	}*/
-	UE_LOG(LogTemp, Error, TEXT("abb"));
-
 	ServerCheckMatchState();
 }
 
@@ -843,8 +834,9 @@ void ABlasterPlayerController::HandleMatchHasStarted(bool bTeamMatch)
 		{
 			BlasterHUD->GetAnnouncement()->SetVisibility(ESlateVisibility::Hidden);
 		}
-		
-		if (BlasterHUD->GetWeaponSelectOverlay() == nullptr)
+
+		// 점령전 or 팀데스매치
+		if (BlasterHUD->GetWeaponSelectOverlay() == nullptr && bShowTeamScores)
 		{
 			BlasterHUD->AddWeaponSelectOverlay();
 			SetInputMode(FInputModeUIOnly());

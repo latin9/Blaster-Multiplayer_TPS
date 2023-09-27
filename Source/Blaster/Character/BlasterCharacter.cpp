@@ -312,6 +312,21 @@ void ABlasterCharacter::Elim(bool bPlayerLeftGame)
 	MulticastElim(bPlayerLeftGame);
 }
 
+void ABlasterCharacter::ClientElimDestroyed_Implementation()
+{
+	HandleElimDestroyed();
+}
+
+void ABlasterCharacter::HandleElimDestroyed()
+{
+	if (ElimBotComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("ElimBotComponent is not null"));
+		UE_LOG(LogTemp, Warning, TEXT("ElimBotComponent Start DestroyComponent"));
+		ElimBotComponent->DestroyComponent();
+	}
+}
+
 void ABlasterCharacter::MulticastElim_Implementation(bool bPlayerLeftGame)
 {
 	bLeftGame = bPlayerLeftGame;
@@ -1034,15 +1049,30 @@ void ABlasterCharacter::UpdateHUDAmmo()
 {
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
 
-	if (BlasterPlayerController && Combat && Combat->EquippedWeapon && bUpdateHUDAmmo)
+	if (BlasterPlayerController && Combat && Combat->EquippedWeapon && bUpdateHUDAmmo == false)
 	{
 		BlasterPlayerController->SetHUDCarriedAmmo(Combat->CarriedAmmo);
 		BlasterPlayerController->SetHUDWeaponAmmo(Combat->EquippedWeapon->GetAmmo());
-		bUpdateHUDAmmo = false;
+		bUpdateHUDAmmo = true;
 	}
 	else
 	{
 		bUpdateHUDAmmo = true;
+	}
+}
+
+void ABlasterCharacter::UpdateHUDGrenade()
+{
+	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
+
+	if (BlasterPlayerController && Combat && bUpdateHUDGrenade == false)
+	{
+		Combat->UpdateHUDGrenades();
+		bUpdateHUDGrenade = true;
+	}
+	else
+	{
+		bUpdateHUDGrenade = true;
 	}
 }
 
@@ -1090,6 +1120,7 @@ void ABlasterCharacter::PollInit()
 	if (bUpdateHUDAmmo)
 	{
 		UpdateHUDAmmo();
+		UpdateHUDGrenade();
 	}
 }
 
@@ -1204,10 +1235,10 @@ void ABlasterCharacter::ServerHandleWeaponSelection_Implementation(EMainWeapon_T
 {
 	UWorld* World = GetWorld();
 
-	// 기본 무기 설정
-	AWeapon* MainWeapon = World->SpawnActor<AWeapon>(MapMainWeapons[EMainWeapon_Type::EMW_AssaultRifle]);
-	AWeapon* SubWeapon = World->SpawnActor<AWeapon>(MapSubWeapons[ESubWeapon_Type::ESW_Pistol]);
+	AWeapon* MainWeapon = nullptr;
+	AWeapon* SubWeapon = nullptr;
 
+	// 선택한 무기에 따라 스폰되는 무기 변경
 	switch (MainWeapon_Type)
 	{
 	case EMainWeapon_Type::EMW_AssaultRifle:
@@ -1238,6 +1269,16 @@ void ABlasterCharacter::ServerHandleWeaponSelection_Implementation(EMainWeapon_T
 	}
 	MainWeapon->bDestroyWeapon = true;
 	SubWeapon->bDestroyWeapon = true;
+	
+	// 무기를 선택하지 않을 경우를 대비
+	if (MainWeapon == nullptr)
+	{
+		MainWeapon = World->SpawnActor<AWeapon>(MapMainWeapons[EMainWeapon_Type::EMW_AssaultRifle]);
+	}
+	if (SubWeapon == nullptr)
+	{
+		SubWeapon = World->SpawnActor<AWeapon>(MapSubWeapons[ESubWeapon_Type::ESW_Pistol]);
+	}
 
 	if (Combat)
 	{

@@ -106,6 +106,11 @@ void ATeamsGameMode::RequestRespawn(ACharacter* ElimmedCharacter, AController* E
 {
 	Super::RequestRespawn(ElimmedCharacter, ElimmedController);
 
+	HandleTeamMatchStarted(ElimmedController);
+}
+
+void ATeamsGameMode::HandleTeamMatchStarted(AController* ElimmedController)
+{
 	ABlasterPlayerController* PlayerController = Cast<ABlasterPlayerController>(ElimmedController);
 
 	if (PlayerController)

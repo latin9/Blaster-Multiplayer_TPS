@@ -159,7 +159,8 @@ void ABlasterGameMode::RequestRespawn(ACharacter* ElimmedCharacter, AController*
 		// 폰의 상태를 초기 상태로 재설정하기 위해 호출되는것
 		ElimmedCharacter->Reset();
 		ElimmedCharacter->Destroy();
-		//Cast<ABlasterCharacter>(ElimmedCharacter)->ServerElimDestroyed();
+		/*Cast<ABlasterCharacter>(ElimmedCharacter)->HandleElimDestroyed();
+		Cast<ABlasterCharacter>(ElimmedCharacter)->ClientElimDestroyed();*/
 	}
 
 	if (ElimmedController)

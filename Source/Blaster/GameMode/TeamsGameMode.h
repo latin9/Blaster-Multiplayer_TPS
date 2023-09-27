@@ -24,8 +24,11 @@ public:
 	virtual void PlayerEliminated(class ABlasterCharacter* ElimmedCharacter, class ABlasterPlayerController* VictimController,
 		class ABlasterPlayerController* AttackerController) override;
 	virtual void RequestRespawn(class ACharacter* ElimmedCharacter, AController* ElimmedController) override;
+	void HandleTeamMatchStarted(AController* ElimmedController);
 	
 protected:
 	// 경기가 시작될때 실행되는 함수
 	virtual void HandleMatchHasStarted() override;
+
+
 };
