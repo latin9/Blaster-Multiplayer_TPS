@@ -36,6 +36,15 @@ void ATeamsGameMode::PostLogin(APlayerController* NewPlayer)
 			}
 		}
 	}
+
+	if (MatchState == MatchState::InProgress)
+	{
+		if (NewPlayer)
+		{
+			Cast<ABlasterPlayerController>(NewPlayer)->HandleMatchHasStarted(true);
+			HandleTeamMatchStarted(NewPlayer);
+		}
+	}
 }
 
 void ATeamsGameMode::Logout(AController* Exiting)
@@ -56,6 +65,7 @@ void ATeamsGameMode::Logout(AController* Exiting)
 			BlasterGameState->BlueTeam.Remove(BlasterPlayerState);
 		}
 	}
+
 }
 
 float ATeamsGameMode::CalculateDamage(AController* Attacker, AController* Victim, float BaseDamage)

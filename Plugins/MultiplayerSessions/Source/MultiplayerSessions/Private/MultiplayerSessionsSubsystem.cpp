@@ -191,6 +191,8 @@ void UMultiplayerSessionsSubsystem::OnDestroySessionComplete(FName SessionName, 
 	if (m_SessionInterface)
 	{
 		m_SessionInterface->ClearOnDestroySessionCompleteDelegate_Handle(m_DestroySessionCompleteDelegateHandle);
+		m_SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(m_JoinSessionCompleteDelegateHandle);
+		m_SessionInterface->ClearOnFindSessionsCompleteDelegate_Handle(m_FindSessionCompleteDelegateHandle);
 	}
 
 	if (bWasSuccessful && m_bCreateSessionOnDestroy)

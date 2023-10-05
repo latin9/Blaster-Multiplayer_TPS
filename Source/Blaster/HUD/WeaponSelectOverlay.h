@@ -49,8 +49,8 @@ private:
 	class UButton* SelectButton;
 
 	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-		EMainWeapon_Type MainWeapons;
+		EMainWeapon_Type MainWeapons = EMainWeapon_Type::EMW_AssaultRifle;
 
 	UPROPERTY(BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-		ESubWeapon_Type SubWeapons;
+		ESubWeapon_Type SubWeapons = ESubWeapon_Type::ESW_Pistol;
 };

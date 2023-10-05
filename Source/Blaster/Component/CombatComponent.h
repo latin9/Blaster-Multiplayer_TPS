@@ -219,30 +219,30 @@ private:
 
 	// 라이플 첫 시작 총알 개수
 	UPROPERTY(EditAnywhere)
-	int32 StartingARAmmo = 30;
+	int32 StartingARAmmo = 150;
 
 	UPROPERTY(EditAnywhere)
-	int32 StartingRocketAmmo = 4;
+	int32 StartingRocketAmmo = 10;
 
 	UPROPERTY(EditAnywhere)
-	int32 StartingPistolAmmo = 15;
+	int32 StartingPistolAmmo = 100;
 
 	UPROPERTY(EditAnywhere)
-	int32 StartingSMGAmmo = 15;
+	int32 StartingSMGAmmo = 100;
 
 	UPROPERTY(EditAnywhere)
-	int32 StartingShotgunAmmo = 20;
+	int32 StartingShotgunAmmo = 40;
 
 	UPROPERTY(EditAnywhere)
-	int32 StartingSniperAmmo = 10;
+	int32 StartingSniperAmmo = 30;
 
 	UPROPERTY(EditAnywhere)
-	int32 StartingGrenadeLauncherAmmo = 5;
+	int32 StartingGrenadeLauncherAmmo = 10;
 
 	void InitializeCarriedAmmo();
 
 	// 모든 클라이언트는 전투 상태를 알아야한다
-	UPROPERTY(ReplicatedUsing = OnRep_CombatSTate)
+	UPROPERTY(ReplicatedUsing = OnRep_CombatState)
 	ECombatState CombatState = ECombatState::ECS_Unoccupied;
 
 	UFUNCTION()
@@ -274,6 +274,7 @@ private:
 public:	
 	FORCEINLINE int32 GetGrenades() const { return Grenades; }
 	FORCEINLINE bool GetLocallyReloading() const { return bLocallyReloading; }
+	FORCEINLINE ECombatState GetCombatState() const { return CombatState; }
 	bool ShouldSwapWeapons();
 		
 };

@@ -156,6 +156,7 @@ protected:
 
 	UFUNCTION()
 	void OnPingTooHigh(bool bPingTooHigh);
+
 public:
 	UPROPERTY(EditAnywhere)
 	EFireType FireType;

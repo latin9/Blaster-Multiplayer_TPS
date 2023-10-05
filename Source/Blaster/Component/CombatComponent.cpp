@@ -717,6 +717,7 @@ void UCombatComponent::SwapWeapons()
 
 void UCombatComponent::EquipPrimaryWeapon(AWeapon* WeaponToEquip)
 {
+	if (WeaponToEquip == nullptr) return;
 	DropEquippedWeapon();
 	EquippedWeapon = WeaponToEquip;
 	EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
@@ -735,11 +736,15 @@ void UCombatComponent::EquipPrimaryWeapon(AWeapon* WeaponToEquip)
 
 void UCombatComponent::EquipSecondaryWeapon(AWeapon* WeaponToEquip)
 {
+	if (WeaponToEquip == nullptr) return;
 	SecondaryWeapon = WeaponToEquip;
 	SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
 	AttachActorToBackpack(WeaponToEquip);
 	SecondaryWeapon->SetOwner(Character);
+	SecondaryWeapon->SetHUDAmmo();
+	UpdateCarriedAmmo();
 	PlayEquipWeaponSound(WeaponToEquip);
+	ReloadEmptyWeapon();
 }
 
 void UCombatComponent::OnRep_Aiming()
@@ -759,14 +764,28 @@ void UCombatComponent::Reload()
 	// Ammo가 0개 이상이고, Cobat상태가 ECS_Unoccupied일때만 가능
 	if (CarriedAmmo > 0 && CombatState == ECombatState::ECS_Unoccupied && EquippedWeapon && !EquippedWeapon->IsAmmoFull() && !bLocallyReloading)
 	{
-		ServerReload();
-		HandleReload();
 		bLocallyReloading = true;
+		CombatState = ECombatState::ECS_Reloading;
+		HandleReload();
+		ServerReload();
 		//UE_LOG(LogTemp, Error, TEXT("Play Reload"));
 	}
 
 }
 
+void UCombatComponent::ServerReload_Implementation()
+{
+	if (Character == nullptr || EquippedWeapon == nullptr)
+		return;
+
+	// CombatState상태를 변경하면 OnRep이 실행된다
+	CombatState = ECombatState::ECS_Reloading;
+	// 즉, 서버에서도 해당 함수를 호출하고 클라에서도 동일하게 호출해줘야함
+	if (!Character->IsLocallyControlled())
+	{
+		HandleReload();
+	}
+}
 void UCombatComponent::FinishReloading()
 {
 	if (!Character->HasAuthority())
@@ -776,19 +795,6 @@ void UCombatComponent::FinishReloading()
 
 	LocalFinishReloading();
 	//ServerFinishReloading();
-}
-
-void UCombatComponent::ServerFinishReloading_Implementation()
-{
-	MulticastFinishReloading();
-}
-
-void UCombatComponent::MulticastFinishReloading_Implementation()
-{
-	if (Character && Character->IsLocallyControlled() && !Character->HasAuthority())
-		return;
-
-	LocalFinishReloading();
 }
 
 void UCombatComponent::LocalFinishReloading()
@@ -804,12 +810,25 @@ void UCombatComponent::LocalFinishReloading()
 		// 총알 업데이트
 		UpdateAmmoValues();
 	}
-	
+
 	if (bFireButtonPressed)
 	{
 		Fire();
 	}
 }
+void UCombatComponent::ServerFinishReloading_Implementation()
+{
+	MulticastFinishReloading();
+}
+
+void UCombatComponent::MulticastFinishReloading_Implementation()
+{
+	if (Character && Character->IsLocallyControlled() && !Character->HasAuthority())
+		return;
+
+	LocalFinishReloading();
+}
+
 
 //void UCombatComponent::ClientUpdateCarriedAmmo_Implementation(int32 ServerCarriedAmmo)
 //{
@@ -827,19 +846,6 @@ void UCombatComponent::LocalFinishReloading()
 //}
 
 
-void UCombatComponent::ServerReload_Implementation()
-{
-	if (Character == nullptr || EquippedWeapon == nullptr)
-		return;
-
-	// CombatState상태를 변경하면 OnRep이 실행된다
-	CombatState = ECombatState::ECS_Reloading;
-	// 즉, 서버에서도 해당 함수를 호출하고 클라에서도 동일하게 호출해줘야함
-	if (!Character->IsLocallyControlled())
-	{
-		HandleReload();
-	}
-}
 
 void UCombatComponent::OnRep_CombatState()
 {

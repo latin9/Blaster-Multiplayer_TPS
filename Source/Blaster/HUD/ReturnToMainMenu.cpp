@@ -146,8 +146,6 @@ void UReturnToMainMenu::ReturnButtonClicked()
 
 void UReturnToMainMenu::ChangeSensitivityBar(float Value)
 {
-	MouseSensitivityValue->SetText(FText::FromString(FString::Printf(TEXT("%f"), Value)));
-
 	UWorld* World = GetWorld();
 	if (World)
 	{
@@ -159,14 +157,13 @@ void UReturnToMainMenu::ChangeSensitivityBar(float Value)
 		if (Character == nullptr)
 			return;
 
+		MouseSensitivityValue->SetText(FText::FromString(FString::Printf(TEXT("%f"), Value)));
 		Character->SetMouseSensitivity(Value);
 	}
 }
 
 void UReturnToMainMenu::ChangeSensitivityTextValue(const FText& Text)
 {
-	MouseSensitivityBar->SetValue(FCString::Atof(*Text.ToString().TrimQuotes()));
-
 	UWorld* World = GetWorld();
 	if (World)
 	{
@@ -178,6 +175,7 @@ void UReturnToMainMenu::ChangeSensitivityTextValue(const FText& Text)
 		if (Character == nullptr)
 			return;
 
+		MouseSensitivityBar->SetValue(FCString::Atof(*Text.ToString().TrimQuotes()));
 		Character->SetMouseSensitivity(MouseSensitivityBar->GetValue());
 	}
 }

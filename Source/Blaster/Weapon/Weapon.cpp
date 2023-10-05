@@ -142,9 +142,7 @@ void AWeapon::ClientUpdateAmmo_Implementation(int32 ServerAmmo)
 
 	// 인자로 들어온 권한있는 값으로 설정한 뒤 처리된 서버 응답을 수신하여 시퀀스를 감소한다.
 	Ammo = ServerAmmo;
-	// 즉 처리 안 된 서버 요청 하나가 방금 처리 된것이다.
-	if (Sequence > 0)
-		--Sequence;
+	--Sequence;
 	Ammo -= Sequence;
 	SetHUDAmmo();
 }
@@ -189,7 +187,6 @@ void AWeapon::OnRep_Owner()
 			SetHUDAmmo();
 		}
 	}
-
 }
 
 void AWeapon::OnPingTooHigh(bool bPingTooHigh)

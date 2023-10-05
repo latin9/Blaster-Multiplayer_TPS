@@ -291,7 +291,7 @@ void ABlasterCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 	// 어떤 클라이언트가 이 변수를 복제할지 제어할 수 있다.
 	// 속성이 오직 소유자에게만 복제되어야 함을 의미
 	// .즉, OverlappingWeapon 속성은 ABlasterCharacter를 소유한 클라이언트에게만 복제될 것입니다.
-	//DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(ABlasterCharacter, OverlappingWeapon, COND_OwnerOnly);
 	DOREPLIFETIME(ABlasterCharacter, Health);
 	DOREPLIFETIME(ABlasterCharacter, Shield);
 	DOREPLIFETIME(ABlasterCharacter, bDisableGameplay);
@@ -1049,14 +1049,10 @@ void ABlasterCharacter::UpdateHUDAmmo()
 {
 	BlasterPlayerController = BlasterPlayerController == nullptr ? Cast<ABlasterPlayerController>(Controller) : BlasterPlayerController;
 
-	if (BlasterPlayerController && Combat && Combat->EquippedWeapon && bUpdateHUDAmmo == false)
+	if (BlasterPlayerController && Combat && Combat->EquippedWeapon)
 	{
 		BlasterPlayerController->SetHUDCarriedAmmo(Combat->CarriedAmmo);
 		BlasterPlayerController->SetHUDWeaponAmmo(Combat->EquippedWeapon->GetAmmo());
-		bUpdateHUDAmmo = true;
-	}
-	else
-	{
 		bUpdateHUDAmmo = true;
 	}
 }
@@ -1117,7 +1113,7 @@ void ABlasterCharacter::PollInit()
 			}
 		}
 	}
-	if (bUpdateHUDAmmo)
+	if (!bUpdateHUDAmmo)
 	{
 		UpdateHUDAmmo();
 		UpdateHUDGrenade();
@@ -1270,15 +1266,6 @@ void ABlasterCharacter::ServerHandleWeaponSelection_Implementation(EMainWeapon_T
 	MainWeapon->bDestroyWeapon = true;
 	SubWeapon->bDestroyWeapon = true;
 	
-	// 무기를 선택하지 않을 경우를 대비
-	if (MainWeapon == nullptr)
-	{
-		MainWeapon = World->SpawnActor<AWeapon>(MapMainWeapons[EMainWeapon_Type::EMW_AssaultRifle]);
-	}
-	if (SubWeapon == nullptr)
-	{
-		SubWeapon = World->SpawnActor<AWeapon>(MapSubWeapons[ESubWeapon_Type::ESW_Pistol]);
-	}
 
 	if (Combat)
 	{

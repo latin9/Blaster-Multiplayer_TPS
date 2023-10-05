@@ -184,6 +184,10 @@ void ABlasterPlayerController::MulticastWeaponSelectOverlay_Implementation()
 	LocalWeaponSelectOverlay();
 }
 
+void ABlasterPlayerController::ClientWeaponSelectOverlay_Implementation()
+{
+	LocalWeaponSelectOverlay();
+}
 
 // 핑이 높다면?
 void ABlasterPlayerController::ServerReportPingStatus_Implementation(bool bHighPing)
@@ -579,6 +583,7 @@ void ABlasterPlayerController::SetHUDBlueTeamScore(int32 BlueScore)
 		BlasterHUD->GetCharacterOverlay()->BlueTeamScore->SetText(FText::FromString(Score));
 	}
 }
+
 
 void ABlasterPlayerController::SwitchViewToOtherPlayer()
 {

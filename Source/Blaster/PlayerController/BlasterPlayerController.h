@@ -59,7 +59,9 @@ public:
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastWeaponSelectOverlay();
-
+	
+	UFUNCTION(Client, Reliable)
+	void ClientWeaponSelectOverlay();
 public:
 	void SwitchViewToOtherPlayer();
 
